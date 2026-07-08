@@ -36,3 +36,39 @@ Always ensure all features and code satisfy the following project evaluation cri
 - **Performance**: Optimize rendering, API response times, and state updates.
 - **Edge case handling**: Test and handle empty values, extremely large files, invalid files, and API failures.
 - **Production readiness**: Secure, robust, and deployable codebase.
+
+# Project Context
+
+## 1. Project Goal
+Build a responsive web application and backend API that allows users to upload CSV files of various formats (e.g., Facebook Lead Exports, Google Ads, CRMs) and use AI (Groq) to map and extract their contents into a structured, unified GrowEasy CRM Lead format.
+
+## 2. Technical Stack
+- **Frontend**: Next.js (App Router, Tailwind CSS v4, TypeScript)
+- **Backend**: Node.js + Express (TypeScript)
+- **Database**: SQLite (for lead persistence)
+- **AI Engine**: Groq API (LLM-based column mapping & extraction in batches of 10-20 leads)
+
+## 3. Directory Layout
+- `backend/`: Node.js/Express server in TypeScript.
+- `frontend/`: Next.js client-side application.
+- `prd.md`: Product Requirements Document detailing target schema, flows, and criteria.
+- `todo.md`: Strictly divided required vs. bonus checklist.
+
+## 4. Unified GrowEasy CRM Lead Schema
+Every imported record is parsed and saved using the following target fields:
+- `created_at` (TEXT / ISO Date)
+- `name` (TEXT)
+- `email` (TEXT - Skip row if both email & mobile are missing)
+- `country_code` (TEXT)
+- `mobile_without_country_code` (TEXT)
+- `company` (TEXT)
+- `city` (TEXT)
+- `state` (TEXT)
+- `country` (TEXT)
+- `lead_owner` (TEXT)
+- `crm_status` (Must be: `GOOD_LEAD_FOLLOW_UP`, `DID_NOT_CONNECT`, `BAD_LEAD`, or `SALE_DONE`)
+- `crm_note` (Remarks, overflow fields, extra email/phones)
+- `data_source` (Must be: `leads_on_demand`, `meridian_tower`, `eden_park`, `varah_swamy`, `sarjapur_plots`, or blank)
+- `possession_time` (TEXT)
+- `description` (TEXT)
+
