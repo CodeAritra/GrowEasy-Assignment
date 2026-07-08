@@ -49,7 +49,7 @@ This document lists the feature-wise implementation checklist, divided strictly 
 
 ## 3. Frontend Development (Required)
 - [ ] **Visual Theme & Typography**
-  - Set up a premium UI using vanilla CSS.
+  - Set up a premium UI using tailwind css and shadcn.
   - Use professional typography (e.g., Google Fonts Inter/Outfit) and spacing.
 - [ ] **Step 1: Upload CSV File**
   - Build a file picker interface that accepts `.csv` files.
