@@ -8,6 +8,7 @@ import { FileUpload } from "@/components/FileUpload";
 import { CSVPreviewTable } from "@/components/CSVPreviewTable";
 import { ParsedResults } from "@/components/ParsedResults";
 import { LoadingOverlay } from "@/components/LoadingOverlay";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 /**
  * Main wizard component for the GrowEasy AI-Powered CSV Importer.
@@ -45,7 +46,10 @@ export function CSVImporterWizard(): React.JSX.Element {
               </p>
             </div>
           </div>
-          <StepIndicator currentStep={step} />
+          <div className="flex items-center gap-4">
+            <StepIndicator currentStep={step} />
+            <ThemeToggle />
+          </div>
         </div>
       </header>
 

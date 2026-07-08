@@ -9,23 +9,11 @@ import {
   RotateCcw,
   ChevronDown,
   ChevronUp,
+  Download,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { DataTable, type ColumnDefinition } from "@/components/DataTable";
 import type { ImportConfirmResponse, TargetLead } from "@/types/lead";
-
-/** Column keys to display in the results table */
-const DISPLAY_COLUMNS: { key: keyof TargetLead; label: string }[] = [
-  { key: "name", label: "Name" },
-  { key: "email", label: "Email" },
-  { key: "country_code", label: "Code" },
-  { key: "mobile_without_country_code", label: "Mobile" },
-  { key: "company", label: "Company" },
-  { key: "city", label: "City" },
-  { key: "state", label: "State" },
-  { key: "country", label: "Country" },
-  { key: "crm_status", label: "Status" },
-  { key: "data_source", label: "Source" },
-];
 
 interface ParsedResultsProps {
   result: ImportConfirmResponse;
@@ -67,71 +55,6 @@ function MetricCard({
 }
 
 /**
- * Renders a table of TargetLead records with fixed display columns.
- */
-function LeadTable({ leads }: { leads: TargetLead[] }): React.JSX.Element {
-  if (leads.length === 0) {
-    return (
-      <div className="flex items-center justify-center py-12 text-muted-foreground">
-        <p className="text-sm">No records to display.</p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="custom-scrollbar overflow-auto rounded-xl border border-border bg-card/50 max-h-[400px]">
-      <table className="w-full text-sm">
-        <thead className="sticky top-0 z-10 bg-card border-b border-border">
-          <tr>
-            <th className="sticky left-0 z-20 bg-card px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground border-r border-border w-12">
-              #
-            </th>
-            {DISPLAY_COLUMNS.map(({ key, label }) => (
-              <th
-                key={key}
-                className="whitespace-nowrap px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground"
-              >
-                {label}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-border/50">
-          {leads.map((lead: TargetLead, index: number) => (
-            <tr
-              key={index}
-              className={cn(
-                "transition-colors hover:bg-accent/30",
-                index % 2 === 0 ? "bg-transparent" : "bg-card/30"
-              )}
-            >
-              <td className="sticky left-0 z-10 bg-card px-4 py-2.5 text-xs font-mono text-muted-foreground border-r border-border">
-                {index + 1}
-              </td>
-              {DISPLAY_COLUMNS.map(({ key }) => (
-                <td
-                  key={`${index}-${key}`}
-                  className="max-w-[250px] truncate whitespace-nowrap px-4 py-2.5 text-foreground"
-                  title={String(lead[key] || "")}
-                >
-                  {key === "crm_status" ? (
-                    <StatusBadge status={lead.crm_status} />
-                  ) : (
-                    lead[key] || (
-                      <span className="text-muted-foreground/50">—</span>
-                    )
-                  )}
-                </td>
-              ))}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
-/**
  * Color-coded badge for CRM status values.
  */
 function StatusBadge({
@@ -159,6 +82,24 @@ function StatusBadge({
   );
 }
 
+// Columns configuration for the unified GrowEasy CRM layout
+const COLUMNS: ColumnDefinition<TargetLead>[] = [
+  { key: "name", label: "Name" },
+  { key: "email", label: "Email" },
+  { key: "country_code", label: "Code" },
+  { key: "mobile_without_country_code", label: "Mobile" },
+  { key: "company", label: "Company" },
+  { key: "city", label: "City" },
+  { key: "state", label: "State" },
+  { key: "country", label: "Country" },
+  {
+    key: "crm_status",
+    label: "Status",
+    render: (lead) => <StatusBadge status={lead.crm_status} />,
+  },
+  { key: "data_source", label: "Source" },
+];
+
 /**
  * Displays import results with metrics cards, imported leads table,
  * and collapsible skipped leads section.
@@ -168,6 +109,57 @@ export function ParsedResults({
   onReset,
 }: ParsedResultsProps): React.JSX.Element {
   const [showSkipped, setShowSkipped] = useState<boolean>(false);
+
+  const handleDownloadCSV = (): void => {
+    const leads = result.importedLeads;
+    if (!leads || leads.length === 0) return;
+
+    const columns: (keyof TargetLead)[] = [
+      "created_at",
+      "name",
+      "email",
+      "country_code",
+      "mobile_without_country_code",
+      "company",
+      "city",
+      "state",
+      "country",
+      "lead_owner",
+      "crm_status",
+      "crm_note",
+      "data_source",
+      "possession_time",
+      "description",
+    ];
+
+    const headers = columns.join(",");
+    const rows = leads.map((lead) =>
+      columns
+        .map((col) => {
+          const value = lead[col];
+          const stringVal =
+            value === null || value === undefined ? "" : String(value);
+          const escaped = stringVal.replace(/"/g, '""');
+          return `"${escaped}"`;
+        })
+        .join(",")
+    );
+
+    const csvContent = [headers, ...rows].join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute(
+      "download",
+      `groweasy_leads_${new Date().toISOString().slice(0, 10)}.csv`
+    );
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   return (
     <div className="mx-auto w-full max-w-6xl space-y-8">
@@ -201,10 +193,23 @@ export function ParsedResults({
 
       {/* Imported leads table */}
       <div className="space-y-4">
-        <h3 className="text-lg font-semibold text-foreground">
-          Imported Leads ({result.importedCount})
-        </h3>
-        <LeadTable leads={result.importedLeads} />
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-semibold text-foreground">
+            Imported Leads ({result.importedCount})
+          </h3>
+          {result.importedCount > 0 && (
+            <button
+              type="button"
+              onClick={handleDownloadCSV}
+              className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-all hover:bg-primary/90 hover:shadow-lg hover:shadow-primary/20 cursor-pointer"
+              id="download-leads-btn"
+            >
+              <Download className="size-4" />
+              Download CSV
+            </button>
+          )}
+        </div>
+        <DataTable data={result.importedLeads} columns={COLUMNS} maxHeight={400} />
       </div>
 
       {/* Skipped leads (collapsible) */}
@@ -213,7 +218,7 @@ export function ParsedResults({
           <button
             type="button"
             onClick={(): void => setShowSkipped(!showSkipped)}
-            className="flex items-center gap-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+            className="flex items-center gap-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground cursor-pointer"
           >
             {showSkipped ? (
               <ChevronUp className="size-4" />
@@ -222,7 +227,9 @@ export function ParsedResults({
             )}
             Skipped Leads ({result.skippedCount})
           </button>
-          {showSkipped && <LeadTable leads={result.skippedLeads} />}
+          {showSkipped && (
+            <DataTable data={result.skippedLeads} columns={COLUMNS} maxHeight={400} />
+          )}
         </div>
       )}
 
@@ -232,7 +239,7 @@ export function ParsedResults({
           type="button"
           onClick={onReset}
           id="upload-another-btn"
-          className="flex items-center gap-2 rounded-lg border border-border px-6 py-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+          className="flex items-center gap-2 rounded-lg border border-border px-6 py-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground cursor-pointer"
         >
           <RotateCcw className="size-4" />
           Upload Another File

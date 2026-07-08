@@ -69,10 +69,33 @@
   --sidebar-ring: oklch(0.696 0.17 162.48);
 }
 
+:root.light {
+  --background: oklch(0.98 0.005 285);
+  --foreground: oklch(0.15 0.01 285);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.15 0.01 285);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.15 0.01 285);
+  --primary: oklch(0.62 0.16 162.48);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.95 0.005 285);
+  --secondary-foreground: oklch(0.15 0.01 285);
+  --muted: oklch(0.95 0.005 285);
+  --muted-foreground: oklch(0.45 0.01 285);
+  --accent: oklch(0.93 0.005 285);
+  --accent-foreground: oklch(0.15 0.01 285);
+  --destructive: oklch(0.55 0.22 27.325);
+  --destructive-foreground: oklch(0.985 0 0);
+  --border: oklch(0.88 0.01 285);
+  --input: oklch(0.88 0.01 285);
+  --ring: oklch(0.62 0.16 162.48);
+}
+
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans), system-ui, sans-serif;
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 /* Custom scrollbar styling for tables */
@@ -82,15 +105,16 @@ body {
 }
 
 .custom-scrollbar::-webkit-scrollbar-track {
-  background: oklch(0.178 0.005 285);
+  background: var(--card);
   border-radius: 4px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: oklch(0.35 0.01 285);
+  background: var(--border);
   border-radius: 4px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: oklch(0.45 0.01 285);
+  background: var(--muted-foreground);
 }
+

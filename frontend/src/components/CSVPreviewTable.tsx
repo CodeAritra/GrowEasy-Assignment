@@ -2,7 +2,7 @@
 
 import React from "react";
 import { Rows3, ArrowRight, RotateCcw } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { DataTable } from "@/components/DataTable";
 import type { RawRecord } from "@/types/lead";
 
 interface CSVPreviewTableProps {
@@ -15,6 +15,7 @@ interface CSVPreviewTableProps {
 /**
  * Interactive table preview for raw CSV data with sticky headers,
  * horizontal/vertical scrolling, and confirm import action.
+ * Utilizes the reusable virtualized DataTable component.
  */
 export function CSVPreviewTable({
   records,
@@ -22,6 +23,12 @@ export function CSVPreviewTable({
   onConfirmImport,
   onUploadAnother,
 }: CSVPreviewTableProps): React.JSX.Element {
+  // Generate column definitions from raw CSV headers
+  const columns = headers.map((header) => ({
+    key: header,
+    label: header,
+  }));
+
   return (
     <div className="mx-auto w-full max-w-6xl space-y-6">
       {/* Header bar */}
@@ -50,59 +57,15 @@ export function CSVPreviewTable({
         </div>
       </div>
 
-      {/* Table container with scroll */}
-      <div className="custom-scrollbar overflow-auto rounded-xl border border-border bg-card/50 max-h-[500px]">
-        <table className="w-full text-sm">
-          <thead className="sticky top-0 z-10 bg-card border-b border-border">
-            <tr>
-              <th className="sticky left-0 z-20 bg-card px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground border-r border-border w-12">
-                #
-              </th>
-              {headers.map((header: string) => (
-                <th
-                  key={header}
-                  className="whitespace-nowrap px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground"
-                >
-                  {header}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border/50">
-            {records.map((record: RawRecord, index: number) => (
-              <tr
-                key={index}
-                className={cn(
-                  "transition-colors hover:bg-accent/30",
-                  index % 2 === 0 ? "bg-transparent" : "bg-card/30"
-                )}
-              >
-                <td className="sticky left-0 z-10 bg-card px-4 py-2.5 text-xs font-mono text-muted-foreground border-r border-border">
-                  {index + 1}
-                </td>
-                {headers.map((header: string) => (
-                  <td
-                    key={`${index}-${header}`}
-                    className="max-w-[300px] truncate whitespace-nowrap px-4 py-2.5 text-foreground"
-                    title={record[header] || ""}
-                  >
-                    {record[header] || (
-                      <span className="text-muted-foreground/50">—</span>
-                    )}
-                  </td>
-                ))}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      {/* Reusable Virtualized DataTable */}
+      <DataTable data={records} columns={columns} maxHeight={450} />
 
       {/* Action buttons */}
       <div className="flex flex-col gap-3 sm:flex-row sm:justify-between">
         <button
           type="button"
           onClick={onUploadAnother}
-          className="flex items-center justify-center gap-2 rounded-lg border border-border px-5 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+          className="flex items-center justify-center gap-2 rounded-lg border border-border px-5 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground cursor-pointer"
         >
           <RotateCcw className="size-4" />
           Upload Different File
@@ -111,7 +74,7 @@ export function CSVPreviewTable({
           type="button"
           onClick={onConfirmImport}
           id="confirm-import-btn"
-          className="flex items-center justify-center gap-2 rounded-lg bg-primary px-6 py-2.5 text-sm font-semibold text-primary-foreground transition-all duration-200 hover:bg-primary/90 hover:shadow-lg hover:shadow-primary/20"
+          className="flex items-center justify-center gap-2 rounded-lg bg-primary px-6 py-2.5 text-sm font-semibold text-primary-foreground transition-all duration-200 hover:bg-primary/90 hover:shadow-lg hover:shadow-primary/20 cursor-pointer"
         >
           Confirm Import
           <ArrowRight className="size-4" />
