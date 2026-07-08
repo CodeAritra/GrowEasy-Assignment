@@ -1,11 +1,10 @@
+import "dotenv/config";
 import express, { Request, Response, NextFunction } from "express";
 import cors from "cors";
-import dotenv from "dotenv";
 import leadRouter from "./routes/leadRoutes";
 import { AppError } from "./utils/AppError";
 import { errorHandler } from "./middleware/errorHandler";
 
-dotenv.config();
 const app: express.Application = express();
 const port: number = Number(process.env.PORT);
 

@@ -2,3 +2,8 @@
 dist/
 *.tsbuildinfo
 .env
+leads.db
+*.db
+*.sqlite
+*.sqlite3
+/demo_leads.csv
