@@ -7,25 +7,25 @@ This document lists the feature-wise implementation checklist, divided strictly 
 # SECTION 1: REQUIRED FEATURES
 
 ## 1. Database & Backend API Setup (Required)
-- [ ] **SQLite Database Initialization**
+- [x] **SQLite Database Initialization**
   - Implement a simple SQLite database helper (using `sqlite3` or `better-sqlite3`).
   - Table `leads` containing all target CRM fields with correct data types.
-- [ ] **Endpoint: `POST /api/upload`**
+- [x] **Endpoint: `POST /api/upload`**
   - Accept any valid CSV file from client-side upload.
   - Parse the CSV into raw rows/records without running any AI logic.
   - Return the raw records as JSON to the frontend.
-- [ ] **Endpoint: `POST /api/import-confirm`**
+- [x] **Endpoint: `POST /api/import-confirm`**
   - Receive the raw rows payload from the frontend.
   - Batch process rows in sizes of 10 to 20.
   - Call the AI model (Groq) to intelligently map headers and extract records.
   - Save successfully extracted/mapped leads into SQLite.
   - Handle skipping logic: Skip rows missing *both* email and mobile number.
   - Return JSON results detailing successfully parsed leads, skipped leads, and overall metrics (Total imported, Total skipped).
-- [ ] **Endpoint: `GET /api/leads`**
+- [x] **Endpoint: `GET /api/leads`**
   - Retrieve all successfully imported leads from SQLite for display.
 
 ## 2. AI Model Mapping & Prompt Engineering (Required)
-- [ ] **Schema Definition & Mapping System Prompt**
+- [x] **Schema Definition & Mapping System Prompt**
   - Create a robust system prompt mapping dynamic input columns to the target GrowEasy CRM format:
     * `created_at` (Lead creation date, parsable by `new Date()`)
     * `name` (Lead name)
@@ -42,7 +42,7 @@ This document lists the feature-wise implementation checklist, divided strictly 
     * `data_source` (Strictly one of: `leads_on_demand`, `meridian_tower`, `eden_park`, `varah_swamy`, `sarjapur_plots`, or blank)
     * `possession_time` (Property possession time)
     * `description` (Additional description)
-- [ ] **Lead Rules Logic**
+- [x] **Lead Rules Logic**
   - **Duplicate/Multiple Fields Rule**: First email/mobile goes to respective field; extra ones must be appended to `crm_note`.
   - **CSV Row Compatibility**: Ensure AI output does not insert unescaped line breaks that break rows.
   - **Fallback/Ambiguity Logic**: Resolve ambiguous headers (e.g. mapping "Contact" to phone or name depending on content).

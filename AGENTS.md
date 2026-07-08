@@ -72,3 +72,8 @@ Every imported record is parsed and saved using the following target fields:
 - `possession_time` (TEXT)
 - `description` (TEXT)
 
+## 5. Backend Architectural Conventions
+- **Controllers**: Standardized Express controllers (`leadController.ts`) handle routing requests/responses and forward errors to `next(err)`.
+- **Services**: Business operations are strictly placed in services. `LeadService.ts` handles parsing raw CSV buffers (`parseCSV`), saving records, and fetching records from the SQLite database. `AIService.ts` manages batch mapping via the Groq LLM API.
+- **Error Handling**: A custom `AppError` is thrown for operational issues (with a custom status code). Centralized error formatting and request logging are handled by a global error handler middleware (`errorHandler.ts`).
+- **Configuration**: Loaded at initial boot-up via `import "dotenv/config";` at the absolute top of the server entrypoint (`index.ts`) to avoid module resolution timing issues.
