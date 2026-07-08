@@ -70,27 +70,32 @@ The system must parse, extract, and clean data into the following fields:
 
 ## 4. Complete Feature List & Implementation Checklist
 
-### Mandatory Features
-- [ ] **File Upload**: Support for selecting files via file picker.
-- [ ] **Drag & Drop**: Modern drag-and-drop zone with visual hover states.
-- [ ] **Unprocessed Preview**: Client-side preview parsed before sending to API.
-- [ ] **Interactive Table**: Responsive table with sticky headers, horizontal and vertical scrolling.
-- [ ] **Confirmation step**: User must click "Confirm Import" before AI processing starts.
-- [ ] **AI-Powered Batch Processing**: Extract CRM fields using LLM (Groq) in batches.
+### Required Features (Mandatory)
+- [ ] **File Upload Picker**: Allow users to select a valid CSV file via a traditional picker.
+- [ ] **Pre-AI Preview Table**: Client-side parsing to display uploaded rows before any AI processing.
+- [ ] **Interactive Preview Table**: Responsive table with sticky headers, horizontal scrolling, and vertical scrolling.
+- [ ] **Confirmation Step**: A prominent "Confirm Import" button that triggers the backend call.
+- [ ] **Any Valid CSV Parsing**: Backend parses any uploaded CSV file without assuming fixed column names.
+- [ ] **AI-Powered Batch Processing**: Batch processing (10-20 records) using an LLM to map raw columns into the CRM schema.
+- [ ] **Target CRM Schema Extraction**: Map and clean fields: `created_at` (parsable date), `name`, `email`, `country_code`, `mobile_without_country_code`, `company`, `city`, `state`, `country`, `lead_owner`, `crm_status`, `crm_note`, `data_source`, `possession_time`, `description`.
 - [ ] **Lead Rules Engine**:
-  - Restrict status values to `GOOD_LEAD_FOLLOW_UP`, `DID_NOT_CONNECT`, `BAD_LEAD`, `SALE_DONE`.
-  - Restrict data source to specified values or blank.
-  - Move overflow email/mobile to notes.
-  - Parse created dates correctly.
-  - Drop invalid leads lacking both email and mobile.
-- [ ] **Results Display**: Beautiful table of successfully parsed leads and list/count of skipped/invalid records.
+  - Restrict `crm_status` to: `GOOD_LEAD_FOLLOW_UP`, `DID_NOT_CONNECT`, `BAD_LEAD`, or `SALE_DONE`.
+  - Restrict `data_source` to specified values or blank.
+  - Skip invalid records missing *both* email and mobile number.
+  - Move extra emails or mobile numbers to `crm_note`.
+  - Avoid introducing unescaped line breaks.
+- [ ] **Result Display Table**: Show successfully parsed records, skipped records count, total imported, and total skipped metrics.
 
-### Bonus Features (To be completed after priority requirements)
-- [ ] **Incremental Processing / Progress Bar**: Show real-time progress percentages as batches complete.
-- [ ] **Retry Mechanism**: Automatically retry failed AI batch calls.
-- [ ] **Virtualized Table**: Efficient table rendering (e.g., React Window or CSS virtualization) for handling large files without lagging.
-- [ ] **Dark Mode**: Complete light and dark mode toggles with a gorgeous visual aesthetic.
-- [ ] **Download Option**: Export the final parsed leads directly as CSV or JSON from the browser.
-- [ ] **Docker Setup**: Containers to run backend and frontend seamlessly.
-- [ ] **Unit Tests**: Test coverage for CSV parsing, mapping prompts, and database persistence.
-- [ ] **Setup Instructions**: Complete and detailed `README.md`.
+### Bonus Features
+- [ ] **Drag & Drop Upload**: Modern drag-and-drop file upload zone with hover animations and states.
+- [ ] **Progress Indicators**: Real-time progress bars or batch counters during AI processing.
+- [ ] **Streaming / Incremental Parsing**: Stream processed batches from server to client as they complete.
+- [ ] **Retry Mechanism**: Automatically retry failed AI batch calls (e.g., rate limits, transient errors).
+- [ ] **Virtualized Table**: Support viewing large CSVs smoothly using virtualization.
+- [ ] **Dark Mode**: Toggle between light and dark mode with rich aesthetics.
+- [ ] **Download Option**: Export the final AI-extracted records as CSV or JSON.
+- [ ] **Unit Tests**: Test coverage for CSV parsing, prompt mapping logic, and database operations.
+- [ ] **Docker Setup**: Dockerfiles and docker-compose configurations to orchestrate frontend and backend.
+- [ ] **Deployment Configurations**: Configurations for Vercel, Railway, Render, or similar.
+- [ ] **Setup Instructions**: Comprehensive setup guide in `README.md`.
+
