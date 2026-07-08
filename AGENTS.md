@@ -80,4 +80,6 @@ Every imported record is parsed and saved using the following target fields:
 
 ## 6. Frontend Architectural Conventions
 - **Routing & Components**: Adhere strictly to the Next.js idiomatic pattern: page files (`page.tsx`) must be Server Components, while interactivity, React hooks, and browser-facing states are encapsulated in client components (e.g., `<CSVImporterWizard />` containing `"use client";`).
+- **Data Presentation**: Use the generic, virtualized `<DataTable />` component to render datasets (both raw CSV previews and AI parsed results) to keep layout and presentation reusable, consistent, and highly performant.
+- **Theme Management**: Support persistent Dark/Light modes via the Client-side `<ThemeToggle />` component, backed by FOUC-prevention bootstrapping inside `layout.tsx` using `localStorage` and system settings.
 
