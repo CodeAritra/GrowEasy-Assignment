@@ -77,3 +77,7 @@ Every imported record is parsed and saved using the following target fields:
 - **Services**: Business operations are strictly placed in services. `LeadService.ts` handles parsing raw CSV buffers (`parseCSV`), saving records, and fetching records from the SQLite database. `AIService.ts` manages batch mapping via the Groq LLM API.
 - **Error Handling**: A custom `AppError` is thrown for operational issues (with a custom status code). Centralized error formatting and request logging are handled by a global error handler middleware (`errorHandler.ts`).
 - **Configuration**: Loaded at initial boot-up via `import "dotenv/config";` at the absolute top of the server entrypoint (`index.ts`) to avoid module resolution timing issues.
+
+## 6. Frontend Architectural Conventions
+- **Routing & Components**: Adhere strictly to the Next.js idiomatic pattern: page files (`page.tsx`) must be Server Components, while interactivity, React hooks, and browser-facing states are encapsulated in client components (e.g., `<CSVImporterWizard />` containing `"use client";`).
+

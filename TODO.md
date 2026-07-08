@@ -48,19 +48,19 @@ This document lists the feature-wise implementation checklist, divided strictly 
   - **Fallback/Ambiguity Logic**: Resolve ambiguous headers (e.g. mapping "Contact" to phone or name depending on content).
 
 ## 3. Frontend Development (Required)
-- [ ] **Visual Theme & Typography**
+- [x] **Visual Theme & Typography**
   - Set up a premium UI using tailwind css and shadcn.
   - Use professional typography (e.g., Google Fonts Inter/Outfit) and spacing.
-- [ ] **Step 1: Upload CSV File**
+- [x] **Step 1: Upload CSV File**
   - Build a file picker interface that accepts `.csv` files.
-- [ ] **Step 2: Local Table Preview (Pre-AI)**
+- [x] **Step 2: Local Table Preview (Pre-AI)**
   - Parse CSV on the client side using a fast library.
   - Render raw data in a beautiful responsive preview table.
   - Support horizontal scrolling, vertical scrolling, and sticky headers.
-- [ ] **Step 3: Confirm Import Step**
+- [x] **Step 3: Confirm Import Step**
   - Display a prominent **"Confirm Import"** button.
   - Ensure no AI API calls occur prior to confirmation.
-- [ ] **Step 4: Display Parsed Result**
+- [x] **Step 4: Display Parsed Result**
   - Show the final AI-extracted records returned by the backend in a separate responsive table.
   - Display dynamic metrics: Total Imported, Total Skipped, list of skipped records.
 
@@ -69,7 +69,7 @@ This document lists the feature-wise implementation checklist, divided strictly 
 # SECTION 2: BONUS FEATURES
 
 ## 1. Frontend Enhancements (Bonus)
-- [ ] **Drag & Drop Upload**: A modern drag-and-drop file upload zone with hover animations.
+- [x] **Drag & Drop Upload**: A modern drag-and-drop file upload zone with hover animations.
 - [ ] **Progress Indicators**: Real-time progress bars or batch indicators (e.g. "Processing Batch 2/10...") during the AI import phase.
 - [ ] **Virtualized Table**: Support rendering large CSV previews (e.g., using `react-window` or custom rendering) without browser lag.
 - [ ] **Dark Mode**: Add a light/dark mode theme toggle with persistent configuration.
