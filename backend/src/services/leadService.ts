@@ -8,7 +8,7 @@ export class LeadService {
    * Parses a CSV file buffer and returns raw parsed rows.
    */
   public static parseCSV(buffer: Buffer): Promise<Record<string, string>[]> {
-    return new Promise((resolve, reject) => {
+    return new Promise<Record<string, string>[]>((resolve: (value: Record<string, string>[]) => void, reject: (err: Error) => void): void => {
       const csvContent: string = buffer.toString("utf-8");
       parse(
         csvContent,
@@ -17,7 +17,7 @@ export class LeadService {
           skip_empty_lines: true,
           trim: true
         },
-        (err: Error | undefined, records: Record<string, string>[] | undefined) => {
+        (err: Error | undefined, records: Record<string, string>[] | undefined): void => {
           if (err) {
             return reject(new AppError("Failed to parse CSV file: " + err.message, 400));
           }

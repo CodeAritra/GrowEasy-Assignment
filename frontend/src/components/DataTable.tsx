@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useRef, useState } from "react";
+import React, { useRef } from "react";
+import { FixedSizeList as List } from "react-window";
 import { cn } from "@/lib/utils";
 
 export interface ColumnDefinition<T> {
@@ -18,10 +19,11 @@ interface DataTableProps<T> {
 }
 
 /**
- * Highly reusable, virtualized data table.
+ * Highly reusable, virtualized data table using react-window.
  * Supports sticky headers, dynamic columns, alternating rows,
  * custom cell renderers (e.g. badges, tooltips), and virtualized scrolling.
  */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function DataTable<T extends Record<string, any>>({
   data,
   columns,
@@ -30,11 +32,6 @@ export function DataTable<T extends Record<string, any>>({
   bufferCount = 10,
 }: DataTableProps<T>): React.JSX.Element {
   const containerRef = useRef<HTMLDivElement>(null);
-  const [scrollTop, setScrollTop] = useState<number>(0);
-
-  const handleScroll = (e: React.UIEvent<HTMLDivElement>): void => {
-    setScrollTop(e.currentTarget.scrollTop);
-  };
 
   if (data.length === 0) {
     return (
@@ -44,88 +41,79 @@ export function DataTable<T extends Record<string, any>>({
     );
   }
 
-  // Virtualization math
-  const startIndex = Math.max(0, Math.floor(scrollTop / rowHeight) - bufferCount);
-  const endIndex = Math.min(
-    data.length,
-    Math.ceil((scrollTop + maxHeight) / rowHeight) + bufferCount
-  );
-
-  const paddingTop = startIndex * rowHeight;
-  const paddingBottom = (data.length - endIndex) * rowHeight;
-  const visibleRows = data.slice(startIndex, endIndex);
+  // Calculate dynamic minimum width of the table row depending on number of columns.
+  // The index column is 48px, and other columns are allocated a baseline width (e.g., 150px).
+  const estimatedMinWidth = 48 + columns.length * 150;
 
   return (
     <div
       ref={containerRef}
-      onScroll={handleScroll}
-      className="custom-scrollbar overflow-auto rounded-xl border border-border bg-card/50"
-      style={{ maxHeight: `${maxHeight}px` }}
+      className="overflow-x-auto rounded-xl border border-border bg-card/50 custom-scrollbar"
     >
-      <table className="w-full text-sm">
-        <thead className="sticky top-0 z-10 bg-card border-b border-border">
-          <tr>
-            <th className="sticky left-0 z-20 bg-card px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground border-r border-border w-12">
-              #
-            </th>
-            {columns.map((col) => (
-              <th
-                key={String(col.key)}
-                className="whitespace-nowrap px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground"
-              >
-                {col.label}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-border/50">
-          {paddingTop > 0 && (
-            <tr style={{ height: `${paddingTop}px` }}>
-              <td colSpan={columns.length + 1} style={{ height: `${paddingTop}px` }} />
-            </tr>
-          )}
-          {visibleRows.map((row, index) => {
-            const actualIndex = startIndex + index;
+      <div style={{ minWidth: `${estimatedMinWidth}px` }} className="w-full">
+        {/* Table Header */}
+        <div className="sticky top-0 z-10 flex bg-card border-b border-border font-semibold text-xs text-muted-foreground uppercase tracking-wider select-none">
+          <div className="flex-none w-12 px-4 py-3 text-left border-r border-border flex items-center justify-start">
+            #
+          </div>
+          {columns.map((col) => (
+            <div
+              key={String(col.key)}
+              className="flex-1 px-4 py-3 text-left whitespace-nowrap flex items-center"
+            >
+              {col.label}
+            </div>
+          ))}
+        </div>
+
+        {/* Table Body (Virtualized list using react-window) */}
+        <List
+          height={maxHeight}
+          itemCount={data.length}
+          itemSize={rowHeight}
+          width="100%"
+          className="custom-scrollbar"
+          overscanCount={bufferCount}
+        >
+          {({ index, style }) => {
+            const row = data[index];
             return (
-              <tr
-                key={actualIndex}
+              <div
+                style={style}
                 className={cn(
-                  "transition-colors hover:bg-accent/30",
-                  actualIndex % 2 === 0 ? "bg-transparent" : "bg-card/30"
+                  "flex items-center text-sm border-b border-border/50 transition-colors hover:bg-accent/30",
+                  index % 2 === 0 ? "bg-transparent" : "bg-card/30"
                 )}
-                style={{ height: `${rowHeight}px` }}
               >
-                <td className="sticky left-0 z-10 bg-card px-4 py-2.5 text-xs font-mono text-muted-foreground border-r border-border">
-                  {actualIndex + 1}
-                </td>
+                {/* Index Column */}
+                <div className="flex-none w-12 h-full px-4 py-2.5 text-xs font-mono text-muted-foreground border-r border-border flex items-center justify-start">
+                  {index + 1}
+                </div>
+
+                {/* Data Columns */}
                 {columns.map((col) => {
                   const val = row[col.key as string];
                   return (
-                    <td
-                      key={`${actualIndex}-${String(col.key)}`}
-                      className="max-w-[300px] truncate whitespace-nowrap px-4 py-2.5 text-foreground"
+                    <div
+                      key={`${index}-${String(col.key)}`}
+                      className="flex-1 px-4 py-2.5 max-w-[300px] truncate whitespace-nowrap text-foreground flex items-center"
                       title={String(val !== null && val !== undefined ? val : "")}
                     >
                       {col.render ? (
-                        col.render(row, actualIndex)
+                        col.render(row, index)
                       ) : val !== null && val !== undefined && val !== "" ? (
                         String(val)
                       ) : (
                         <span className="text-muted-foreground/50">—</span>
                       )}
-                    </td>
+                    </div>
                   );
                 })}
-              </tr>
+              </div>
             );
-          })}
-          {paddingBottom > 0 && (
-            <tr style={{ height: `${paddingBottom}px` }}>
-              <td colSpan={columns.length + 1} style={{ height: `${paddingBottom}px` }} />
-            </tr>
-          )}
-        </tbody>
-      </table>
+          }}
+        </List>
+      </div>
     </div>
   );
 }

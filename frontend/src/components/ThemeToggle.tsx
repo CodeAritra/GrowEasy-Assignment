@@ -12,10 +12,12 @@ export function ThemeToggle(): React.JSX.Element {
   const [mounted, setMounted] = useState<boolean>(false);
 
   useEffect(() => {
-    setMounted(true);
     const root = document.documentElement;
     const isLight = root.classList.contains("light");
-    setTheme(isLight ? "light" : "dark");
+    setTimeout(() => {
+      setTheme(isLight ? "light" : "dark");
+      setMounted(true);
+    }, 0);
   }, []);
 
   const toggleTheme = (): void => {
