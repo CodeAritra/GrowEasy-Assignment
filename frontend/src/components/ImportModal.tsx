@@ -5,7 +5,8 @@ import { X, CheckCircle2, AlertCircle, Upload, Sparkles, Loader2, FileSpreadshee
 import { useCSVImporter } from "@/hooks/useCSVImporter";
 import { FileUpload } from "@/components/FileUpload";
 import { DataTable } from "@/components/DataTable";
-import { cn } from "@/lib/utils";
+import { cn, formatISTDate } from "@/lib/utils";
+import type { TargetLead } from "@/types/interface";
 
 interface ImportModalProps {
   isOpen: boolean;
@@ -331,12 +332,21 @@ export function ImportModal({
                   <DataTable
                     data={importResult.importedLeads}
                     columns={[
+                      { key: "created_at", label: "Created At", render: (row: TargetLead): React.ReactNode => formatISTDate(row.created_at) },
                       { key: "name", label: "Name" },
                       { key: "email", label: "Email" },
+                      { key: "country_code", label: "Country Code" },
                       { key: "mobile_without_country_code", label: "Mobile" },
                       { key: "company", label: "Company" },
                       { key: "city", label: "City" },
+                      { key: "state", label: "State" },
+                      { key: "country", label: "Country" },
+                      { key: "lead_owner", label: "Lead Owner" },
                       { key: "crm_status", label: "Status" },
+                      { key: "crm_note", label: "Notes/Remarks" },
+                      { key: "data_source", label: "Source" },
+                      { key: "possession_time", label: "Possession Time" },
+                      { key: "description", label: "Description" },
                     ]}
                     maxHeight={300}
                   />
@@ -350,12 +360,21 @@ export function ImportModal({
                   <DataTable
                     data={importResult.skippedLeads}
                     columns={[
+                      { key: "created_at", label: "Created At", render: (row: TargetLead): React.ReactNode => formatISTDate(row.created_at) },
                       { key: "name", label: "Name" },
                       { key: "email", label: "Email" },
+                      { key: "country_code", label: "Country Code" },
                       { key: "mobile_without_country_code", label: "Mobile" },
                       { key: "company", label: "Company" },
                       { key: "city", label: "City" },
+                      { key: "state", label: "State" },
+                      { key: "country", label: "Country" },
+                      { key: "lead_owner", label: "Lead Owner" },
                       { key: "crm_status", label: "Status" },
+                      { key: "crm_note", label: "Notes/Remarks" },
+                      { key: "data_source", label: "Source" },
+                      { key: "possession_time", label: "Possession Time" },
+                      { key: "description", label: "Description" },
                     ]}
                     maxHeight={300}
                   />
@@ -369,11 +388,21 @@ export function ImportModal({
                   <DataTable
                     data={importResult.failedLeads}
                     columns={[
+                      { key: "created_at", label: "Created At", render: (row: TargetLead): React.ReactNode => formatISTDate(row.created_at) },
                       { key: "name", label: "Name" },
                       { key: "email", label: "Email" },
+                      { key: "country_code", label: "Country Code" },
                       { key: "mobile_without_country_code", label: "Mobile" },
                       { key: "company", label: "Company" },
-                      { key: "crm_note", label: "Reason" },
+                      { key: "city", label: "City" },
+                      { key: "state", label: "State" },
+                      { key: "country", label: "Country" },
+                      { key: "lead_owner", label: "Lead Owner" },
+                      { key: "crm_status", label: "Status" },
+                      { key: "crm_note", label: "Reason/Error" },
+                      { key: "data_source", label: "Source" },
+                      { key: "possession_time", label: "Possession Time" },
+                      { key: "description", label: "Description" },
                     ]}
                     maxHeight={300}
                   />

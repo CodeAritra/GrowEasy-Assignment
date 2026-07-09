@@ -18,7 +18,7 @@ import { DataTable, type ColumnDefinition } from "@/components/DataTable";
 import { ImportModal } from "@/components/ImportModal";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import type { TargetLead } from "@/types/interface";
-import { cn } from "@/lib/utils";
+import { cn, formatISTDate } from "@/lib/utils";
 
 /**
  * Status badge component for CRM status display.
@@ -87,8 +87,14 @@ export function LeadsDashboard(): React.JSX.Element {
   // Column definitions for the leads DataTable
   const columns: ColumnDefinition<TargetLead>[] = useMemo(
     () => [
+      {
+        key: "created_at",
+        label: "Created At",
+        render: (row: TargetLead): React.ReactNode => formatISTDate(row.created_at),
+      },
       { key: "name", label: "Name" },
       { key: "email", label: "Email" },
+      { key: "country_code", label: "Country Code" },
       {
         key: "mobile_without_country_code",
         label: "Mobile",
@@ -106,13 +112,18 @@ export function LeadsDashboard(): React.JSX.Element {
       },
       { key: "company", label: "Company" },
       { key: "city", label: "City" },
+      { key: "state", label: "State" },
+      { key: "country", label: "Country" },
+      { key: "lead_owner", label: "Lead Owner" },
       {
         key: "crm_status",
         label: "Status",
         render: (row: TargetLead): React.ReactNode => <StatusBadge status={row.crm_status} />,
       },
+      { key: "crm_note", label: "Notes/Remarks" },
       { key: "data_source", label: "Source" },
-      { key: "created_at", label: "Created At" },
+      { key: "possession_time", label: "Possession Time" },
+      { key: "description", label: "Description" },
     ],
     []
   );
