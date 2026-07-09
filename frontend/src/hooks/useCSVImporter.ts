@@ -2,17 +2,27 @@
 
 import { useState, useCallback } from "react";
 import Papa from "papaparse";
-import type { RawRecord, ImportConfirmResponse } from "@/types/lead";
+import type { RawRecord, ImportConfirmResponse } from "@/types/interface";
 import { uploadCSV, importConfirm, ApiError } from "@/services/api";
 
 /** Possible steps in the wizard flow */
 export type WizardStep = "upload" | "preview" | "importing" | "results";
+
+export interface ImportProgress {
+  currentBatch: number;
+  totalBatches: number;
+  percentage: number;
+  importedCount: number;
+  skippedCount: number;
+  failedCount: number;
+}
 
 interface UseCSVImporterReturn {
   step: WizardStep;
   rawRecords: RawRecord[];
   headers: string[];
   importResult: ImportConfirmResponse | null;
+  importProgress: ImportProgress | null;
   isUploading: boolean;
   error: string | null;
   handleUpload: (file: File) => Promise<void>;
@@ -30,6 +40,7 @@ export function useCSVImporter(): UseCSVImporterReturn {
   const [headers, setHeaders] = useState<string[]>([]);
   const [importResult, setImportResult] =
     useState<ImportConfirmResponse | null>(null);
+  const [importProgress, setImportProgress] = useState<ImportProgress | null>(null);
   const [isUploading, setIsUploading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -94,9 +105,28 @@ export function useCSVImporter(): UseCSVImporterReturn {
   const handleConfirmImport = useCallback(async (): Promise<void> => {
     setStep("importing");
     setError(null);
+    setImportProgress({
+      currentBatch: 0,
+      totalBatches: Math.ceil(rawRecords.length / 15),
+      percentage: 0,
+      importedCount: 0,
+      skippedCount: 0,
+      failedCount: 0,
+    });
 
     try {
-      const result: ImportConfirmResponse = await importConfirm(rawRecords);
+      const result: ImportConfirmResponse = await importConfirm(rawRecords, (progressMessage) => {
+        if (progressMessage.type === "progress") {
+          setImportProgress({
+            currentBatch: progressMessage.batchIndex,
+            totalBatches: progressMessage.totalBatches,
+            percentage: Math.round((progressMessage.batchIndex / progressMessage.totalBatches) * 100),
+            importedCount: progressMessage.importedCount,
+            skippedCount: progressMessage.skippedCount,
+            failedCount: progressMessage.failedCount,
+          });
+        }
+      });
       setImportResult(result);
       setStep("results");
     } catch (err: unknown) {
@@ -106,6 +136,8 @@ export function useCSVImporter(): UseCSVImporterReturn {
           : "An unexpected error occurred during import."
       );
       setStep("preview");
+    } finally {
+      setImportProgress(null);
     }
   }, [rawRecords]);
 
@@ -117,6 +149,7 @@ export function useCSVImporter(): UseCSVImporterReturn {
     setRawRecords([]);
     setHeaders([]);
     setImportResult(null);
+    setImportProgress(null);
     setIsUploading(false);
     setError(null);
   }, []);
@@ -126,6 +159,7 @@ export function useCSVImporter(): UseCSVImporterReturn {
     rawRecords,
     headers,
     importResult,
+    importProgress,
     isUploading,
     error,
     handleUpload,

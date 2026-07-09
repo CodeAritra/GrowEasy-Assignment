@@ -3,7 +3,30 @@ import type {
   UploadResponse,
   ImportConfirmResponse,
   ApiErrorResponse,
-} from "@/types/lead";
+  TargetLead,
+} from "@/types/interface";
+import { fetchEventSource } from "@microsoft/fetch-event-source";
+
+export interface StreamProgressMessage {
+  type: "progress";
+  batchIndex: number;
+  totalBatches: number;
+  importedCount: number;
+  skippedCount: number;
+  failedCount: number;
+}
+
+export interface StreamSummaryMessage {
+  type: "summary";
+  totalProcessed: number;
+  importedCount: number;
+  skippedCount: number;
+  failedCount: number;
+  importedLeads: TargetLead[];
+  skippedLeads: TargetLead[];
+}
+
+export type StreamMessage = StreamProgressMessage | StreamSummaryMessage;
 
 const API_BASE_URL: string =
   process.env.NEXT_PUBLIC_API_URL!;
@@ -60,22 +83,76 @@ export async function uploadCSV(file: File): Promise<UploadResponse> {
 }
 
 /**
- * Sends parsed raw records to the backend for AI-powered mapping and database import.
+ * Sends parsed raw records to the backend for AI-powered mapping and database import,
+ * reading progress updates from the standard Server-Sent Events (SSE) stream.
  */
 export async function importConfirm(
-  records: RawRecord[]
+  records: RawRecord[],
+  onProgress?: (message: StreamMessage) => void
 ): Promise<ImportConfirmResponse> {
-  const response: Response = await fetch(`${API_BASE_URL}/import-confirm`, {
+  let resolvePromise: (value: ImportConfirmResponse) => void;
+  let rejectPromise: (reason: unknown) => void;
+  const resultPromise = new Promise<ImportConfirmResponse>((resolve, reject) => {
+    resolvePromise = resolve;
+    rejectPromise = reject;
+  });
+
+  const ctrl = new AbortController();
+
+  fetchEventSource(`${API_BASE_URL}/import-confirm`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({ records }),
+    signal: ctrl.signal,
+    openWhenHidden: true,
+    async onopen(response: Response): Promise<void> {
+      if (response.ok && response.headers.get("content-type")?.includes("text/event-stream")) {
+        return;
+      } else if (response.status >= 400 && response.status < 500 && response.status !== 429) {
+        let errText = "";
+        try {
+          errText = await response.text();
+        } catch {
+          // ignore
+        }
+        throw new Error(errText || `API Error: ${response.status}`);
+      } else {
+        throw new Error(`Connection failed: ${response.status}`);
+      }
+    },
+    onmessage(msg: { data: string; event: string; id: string; retry?: number }): void {
+      if (!msg.data) return;
+      try {
+        const parsed = JSON.parse(msg.data) as StreamMessage;
+        if (parsed.type === "progress") {
+          if (onProgress) onProgress(parsed);
+        } else if (parsed.type === "summary") {
+          const finalSummary: ImportConfirmResponse = {
+            message: "Lead import processing completed.",
+            totalProcessed: parsed.totalProcessed,
+            importedCount: parsed.importedCount,
+            skippedCount: parsed.skippedCount,
+            failedCount: parsed.failedCount,
+            importedLeads: parsed.importedLeads,
+            skippedLeads: parsed.skippedLeads,
+          };
+          resolvePromise(finalSummary);
+          ctrl.abort(); // close the connection
+        }
+      } catch (err) {
+        console.error("Failed to parse event message:", err, msg.data);
+      }
+    },
+    onerror(err: unknown): void {
+      rejectPromise(err);
+      ctrl.abort();
+      throw err; // Stop automatic reconnection retries
+    }
+  }).catch((err: unknown): void => {
+    rejectPromise(err);
   });
 
-  if (!response.ok) {
-    return handleErrorResponse(response);
-  }
-
-  return (await response.json()) as ImportConfirmResponse;
+  return resultPromise;
 }

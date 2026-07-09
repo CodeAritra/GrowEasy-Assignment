@@ -3,7 +3,7 @@
 import React from "react";
 import { Rows3, ArrowRight, RotateCcw } from "lucide-react";
 import { DataTable } from "@/components/DataTable";
-import type { RawRecord } from "@/types/lead";
+import type { RawRecord } from "@/types/interface";
 
 interface CSVPreviewTableProps {
   records: RawRecord[];

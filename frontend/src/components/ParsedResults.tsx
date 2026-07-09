@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { DataTable, type ColumnDefinition } from "@/components/DataTable";
-import type { ImportConfirmResponse, TargetLead } from "@/types/lead";
+import type { ImportConfirmResponse, TargetLead } from "@/types/interface";
 
 interface ParsedResultsProps {
   result: ImportConfirmResponse;

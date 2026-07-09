@@ -20,6 +20,7 @@ export function CSVImporterWizard(): React.JSX.Element {
     rawRecords,
     headers,
     importResult,
+    importProgress,
     isUploading,
     error,
     handleUpload,
@@ -30,7 +31,7 @@ export function CSVImporterWizard(): React.JSX.Element {
   return (
     <div className="flex min-h-screen flex-col bg-background">
       {/* Loading overlay during AI processing */}
-      {step === "importing" && <LoadingOverlay />}
+      {step === "importing" && <LoadingOverlay progress={importProgress} />}
 
       {/* Header */}
       <header className="border-b border-border bg-card/50 backdrop-blur-sm">

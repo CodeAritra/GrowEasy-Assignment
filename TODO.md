@@ -70,13 +70,13 @@ This document lists the feature-wise implementation checklist, divided strictly 
 
 ## 1. Frontend Enhancements (Bonus)
 - [x] **Drag & Drop Upload**: A modern drag-and-drop file upload zone with hover animations.
-- [ ] **Progress Indicators**: Real-time progress bars or batch indicators (e.g. "Processing Batch 2/10...") during the AI import phase.
+- [x] **Progress Indicators**: Real-time progress bars or batch indicators (e.g. "Processing Batch 2/10...") during the AI import phase.
 - [x] **Virtualized Table**: Support rendering large CSV previews (e.g., using `react-window`) without browser lag.
 - [x] **Dark Mode**: Add a light/dark mode theme toggle with persistent configuration.
 - [x] **Download Option**: Export the final AI-extracted leads from the UI as a clean CSV 
 
 ## 2. Backend & AI Enhancements (Bonus)
-- [ ] **Streaming / Incremental Parsing**: Stream batches from server to client as they complete.
+- [x] **Streaming / Incremental Parsing**: Stream batches from server to client as they complete.
 - [ ] **AI Retry Mechanism**: Implement exponential backoff or simple retries for failed AI batch API requests.
 - [ ] **Unit Tests**:
   - Write test suites for CSV parsing.

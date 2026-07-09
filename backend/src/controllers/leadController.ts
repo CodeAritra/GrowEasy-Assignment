@@ -27,7 +27,7 @@ export class LeadController {
   }
 
   /**
-   * Confirms raw rows, calls Groq AI to map columns, and inserts into database in batches.
+   * Confirms raw rows, calls Groq AI to map columns, and inserts into database in batches, streaming progress.
    */
   public static async importConfirm(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
@@ -36,6 +36,11 @@ export class LeadController {
       if (!rawRecords || !Array.isArray(rawRecords) || rawRecords.length === 0) {
         return next(new AppError("No records provided to import.", 400));
       }
+
+      // Set headers for SSE streaming
+      res.setHeader("Content-Type", "text/event-stream");
+      res.setHeader("Cache-Control", "no-cache");
+      res.setHeader("Connection", "keep-alive");
 
       const batchSize: number = 15;
       const importedLeads: TargetLead[] = [];
@@ -70,17 +75,31 @@ export class LeadController {
           console.error(`Error mapping batch starting at index ${i}:`, errMsg);
           failedCount += batch.length;
         }
+
+        // Write progress update after each batch (regardless of success/failure) in SSE format
+        const progressUpdate = {
+          type: "progress",
+          batchIndex: Math.floor(i / batchSize) + 1,
+          totalBatches: Math.ceil(rawRecords.length / batchSize),
+          importedCount: successCount,
+          skippedCount,
+          failedCount
+        };
+        res.write(`data: ${JSON.stringify(progressUpdate)}\n\n`);
       }
 
-      res.json({
-        message: "Lead import processing completed.",
+      // Write final summary in SSE format
+      const finalSummary = {
+        type: "summary",
         totalProcessed: rawRecords.length,
         importedCount: successCount,
         skippedCount,
         failedCount,
         importedLeads,
         skippedLeads
-      });
+      };
+      res.write(`data: ${JSON.stringify(finalSummary)}\n\n`);
+      res.end();
     } catch (err) {
       next(err);
     }
