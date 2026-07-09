@@ -17,37 +17,38 @@ import { useLeads } from "@/hooks/useLeads";
 import { DataTable, type ColumnDefinition } from "@/components/DataTable";
 import { ImportModal } from "@/components/ImportModal";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { ExportCSVButton } from "@/components/ExportCSVButton";
 import type { TargetLead } from "@/types/interface";
 import { cn, formatISTDate } from "@/lib/utils";
+
+const STATUS_CONFIG: Record<string, { label: string; className: string; icon: React.ReactNode }> = {
+  GOOD_LEAD_FOLLOW_UP: {
+    label: "Follow Up",
+    className: "bg-primary/10 text-primary border-primary/30",
+    icon: <CheckCircle2 className="size-3" />,
+  },
+  DID_NOT_CONNECT: {
+    label: "No Connect",
+    className: "bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 border-yellow-500/30",
+    icon: <PhoneOff className="size-3" />,
+  },
+  BAD_LEAD: {
+    label: "Bad Lead",
+    className: "bg-destructive/10 text-destructive border-destructive/30",
+    icon: <XCircle className="size-3" />,
+  },
+  SALE_DONE: {
+    label: "Sale Done",
+    className: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/30",
+    icon: <ShoppingCart className="size-3" />,
+  },
+};
 
 /**
  * Status badge component for CRM status display.
  */
 function StatusBadge({ status }: { status: string }): React.JSX.Element {
-  const config: Record<string, { label: string; className: string; icon: React.ReactNode }> = {
-    GOOD_LEAD_FOLLOW_UP: {
-      label: "Follow Up",
-      className: "bg-primary/10 text-primary border-primary/30",
-      icon: <CheckCircle2 className="size-3" />,
-    },
-    DID_NOT_CONNECT: {
-      label: "No Connect",
-      className: "bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 border-yellow-500/30",
-      icon: <PhoneOff className="size-3" />,
-    },
-    BAD_LEAD: {
-      label: "Bad Lead",
-      className: "bg-destructive/10 text-destructive border-destructive/30",
-      icon: <XCircle className="size-3" />,
-    },
-    SALE_DONE: {
-      label: "Sale Done",
-      className: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/30",
-      icon: <ShoppingCart className="size-3" />,
-    },
-  };
-
-  const c = config[status] || {
+  const c = STATUS_CONFIG[status] || {
     label: status || "—",
     className: "bg-muted text-muted-foreground border-border",
     icon: null,
@@ -217,15 +218,24 @@ export function LeadsDashboard(): React.JSX.Element {
               {leads.length} lead{leads.length !== 1 ? "s" : ""} in your CRM database
             </p>
           </div>
-          <button
-            type="button"
-            onClick={() => void refetch()}
-            className="flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-foreground transition-colors cursor-pointer"
-            title="Refresh leads"
-          >
-            <RefreshCw className="size-4" />
-            Refresh
-          </button>
+          <div className="flex items-center gap-2">
+            {leads.length > 0 && (
+              <ExportCSVButton
+                data={leads}
+                filename="all_leads.csv"
+                className="px-3 py-2 text-sm font-medium"
+              />
+            )}
+            <button
+              type="button"
+              onClick={() => void refetch()}
+              className="flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-foreground transition-colors cursor-pointer"
+              title="Refresh leads"
+            >
+              <RefreshCw className="size-4" />
+              Refresh
+            </button>
+          </div>
         </div>
 
         {/* Loading State */}

@@ -14,10 +14,11 @@ export function ThemeToggle(): React.JSX.Element {
   useEffect(() => {
     const root = document.documentElement;
     const isLight = root.classList.contains("light");
-    setTimeout(() => {
+    const timer = setTimeout(() => {
       setTheme(isLight ? "light" : "dark");
       setMounted(true);
     }, 0);
+    return (): void => clearTimeout(timer);
   }, []);
 
   const toggleTheme = (): void => {

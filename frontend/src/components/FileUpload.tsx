@@ -53,6 +53,14 @@ export function FileUpload({
     <div className="mx-auto w-full max-w-2xl space-y-6">
       {/* Drop zone */}
       <div
+        role="button"
+        tabIndex={!file ? 0 : undefined}
+        onKeyDown={(e): void => {
+          if (!file && (e.key === "Enter" || e.key === " ")) {
+            e.preventDefault();
+            handleBrowseClick();
+          }
+        }}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}

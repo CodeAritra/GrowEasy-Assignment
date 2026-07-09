@@ -9,10 +9,10 @@ import {
   RotateCcw,
   ChevronDown,
   ChevronUp,
-  Download,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { DataTable, type ColumnDefinition } from "@/components/DataTable";
+import { ExportCSVButton } from "@/components/ExportCSVButton";
 import type { ImportConfirmResponse, TargetLead } from "@/types/interface";
 
 interface ParsedResultsProps {
@@ -54,6 +54,14 @@ function MetricCard({
   );
 }
 
+const STATUS_COLOR_MAP: Record<string, string> = {
+  GOOD_LEAD_FOLLOW_UP:
+    "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
+  DID_NOT_CONNECT: "bg-amber-500/10 text-amber-400 border-amber-500/20",
+  BAD_LEAD: "bg-red-500/10 text-red-400 border-red-500/20",
+  SALE_DONE: "bg-blue-500/10 text-blue-400 border-blue-500/20",
+};
+
 /**
  * Color-coded badge for CRM status values.
  */
@@ -62,19 +70,11 @@ function StatusBadge({
 }: {
   status: string;
 }): React.JSX.Element {
-  const colorMap: Record<string, string> = {
-    GOOD_LEAD_FOLLOW_UP:
-      "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
-    DID_NOT_CONNECT: "bg-amber-500/10 text-amber-400 border-amber-500/20",
-    BAD_LEAD: "bg-red-500/10 text-red-400 border-red-500/20",
-    SALE_DONE: "bg-blue-500/10 text-blue-400 border-blue-500/20",
-  };
-
   return (
     <span
       className={cn(
         "inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium",
-        colorMap[status] || "bg-muted text-muted-foreground border-border"
+        STATUS_COLOR_MAP[status] || "bg-muted text-muted-foreground border-border"
       )}
     >
       {status.replace(/_/g, " ")}
@@ -109,57 +109,6 @@ export function ParsedResults({
   onReset,
 }: ParsedResultsProps): React.JSX.Element {
   const [showSkipped, setShowSkipped] = useState<boolean>(false);
-
-  const handleDownloadCSV = (): void => {
-    const leads = result.importedLeads;
-    if (!leads || leads.length === 0) return;
-
-    const columns: (keyof TargetLead)[] = [
-      "created_at",
-      "name",
-      "email",
-      "country_code",
-      "mobile_without_country_code",
-      "company",
-      "city",
-      "state",
-      "country",
-      "lead_owner",
-      "crm_status",
-      "crm_note",
-      "data_source",
-      "possession_time",
-      "description",
-    ];
-
-    const headers = columns.join(",");
-    const rows = leads.map((lead) =>
-      columns
-        .map((col) => {
-          const value = lead[col];
-          const stringVal =
-            value === null || value === undefined ? "" : String(value);
-          const escaped = stringVal.replace(/"/g, '""');
-          return `"${escaped}"`;
-        })
-        .join(",")
-    );
-
-    const csvContent = [headers, ...rows].join("\n");
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-
-    const link = document.createElement("a");
-    link.setAttribute("href", url);
-    link.setAttribute(
-      "download",
-      `groweasy_leads_${new Date().toISOString().slice(0, 10)}.csv`
-    );
-    link.style.visibility = "hidden";
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
 
   return (
     <div className="mx-auto w-full max-w-6xl space-y-8">
@@ -197,38 +146,49 @@ export function ParsedResults({
           <h3 className="text-lg font-semibold text-foreground">
             Imported Leads ({result.importedCount})
           </h3>
-          {result.importedCount > 0 && (
-            <button
-              type="button"
-              onClick={handleDownloadCSV}
-              className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-all hover:bg-primary/90 hover:shadow-lg hover:shadow-primary/20 cursor-pointer"
-              id="download-leads-btn"
-            >
-              <Download className="size-4" />
-              Download CSV
-            </button>
+          {result.importedLeads.length > 0 && (
+            <ExportCSVButton
+              data={result.importedLeads}
+              filename="imported_leads.csv"
+            />
           )}
         </div>
-        <DataTable data={result.importedLeads} columns={COLUMNS} maxHeight={400} />
+        <DataTable
+          data={result.importedLeads}
+          columns={COLUMNS}
+          maxHeight={400}
+        />
       </div>
 
       {/* Skipped leads (collapsible) */}
       {result.skippedCount > 0 && (
         <div className="space-y-4">
-          <button
-            type="button"
-            onClick={(): void => setShowSkipped(!showSkipped)}
-            className="flex items-center gap-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground cursor-pointer"
-          >
-            {showSkipped ? (
-              <ChevronUp className="size-4" />
-            ) : (
-              <ChevronDown className="size-4" />
+          <div className="flex items-center justify-between">
+            <button
+              type="button"
+              onClick={(): void => setShowSkipped(!showSkipped)}
+              className="flex items-center gap-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground cursor-pointer"
+            >
+              {showSkipped ? (
+                <ChevronUp className="size-4" />
+              ) : (
+                <ChevronDown className="size-4" />
+              )}
+              Skipped Leads ({result.skippedCount})
+            </button>
+            {showSkipped && result.skippedLeads.length > 0 && (
+              <ExportCSVButton
+                data={result.skippedLeads}
+                filename="skipped_leads.csv"
+              />
             )}
-            Skipped Leads ({result.skippedCount})
-          </button>
+          </div>
           {showSkipped && (
-            <DataTable data={result.skippedLeads} columns={COLUMNS} maxHeight={400} />
+            <DataTable
+              data={result.skippedLeads}
+              columns={COLUMNS}
+              maxHeight={400}
+            />
           )}
         </div>
       )}

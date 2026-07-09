@@ -5,13 +5,351 @@ import { X, CheckCircle2, AlertCircle, Upload, Sparkles, Loader2, FileSpreadshee
 import { useCSVImporter } from "@/hooks/useCSVImporter";
 import { FileUpload } from "@/components/FileUpload";
 import { DataTable } from "@/components/DataTable";
+import { ExportCSVButton } from "@/components/ExportCSVButton";
 import { cn, formatISTDate } from "@/lib/utils";
-import type { TargetLead } from "@/types/interface";
+import type { TargetLead, ImportProgress, ImportConfirmResponse, RawRecord } from "@/types/interface";
 
 interface ImportModalProps {
   isOpen: boolean;
   onClose: () => void;
   onImportComplete: () => void;
+}
+
+interface ImportPreviewStepProps {
+  fileName: string;
+  fileSize: number;
+  rawRecords: RawRecord[];
+  previewColumns: { key: string; label: string }[];
+  error: string | null;
+  handleReset: () => void;
+}
+
+interface ImportingStepProps {
+  importProgress: ImportProgress | null;
+}
+
+interface ImportResultsStepProps {
+  importResult: ImportConfirmResponse;
+  fileName: string;
+  activeTab: "imported" | "skipped" | "failed";
+  setActiveTab: (tab: "imported" | "skipped" | "failed") => void;
+}
+
+/**
+ * Sub-component for rendering the CSV preview step of the importer.
+ */
+function ImportPreviewStep({
+  fileName,
+  fileSize,
+  rawRecords,
+  previewColumns,
+  error,
+  handleReset,
+}: ImportPreviewStepProps): React.JSX.Element {
+  return (
+    <div className="space-y-4">
+      {/* File card */}
+      {fileName && (
+        <div className="flex items-center gap-3 rounded-xl border border-border bg-card/60 px-4 py-3">
+          <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+            <FileSpreadsheet className="size-5 text-primary" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-semibold text-foreground">
+              {fileName}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {(fileSize / 1024).toFixed(1)} KB · {rawRecords.length} rows · {previewColumns.length} columns
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={handleReset}
+            className="flex size-7 shrink-0 items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors cursor-pointer"
+            aria-label="Remove file"
+          >
+            <X className="size-4" />
+          </button>
+        </div>
+      )}
+
+      {/* CSV Preview Table */}
+      <DataTable
+        data={rawRecords}
+        columns={previewColumns}
+        maxHeight={340}
+      />
+
+      {error && (
+        <div className="flex items-start gap-3 rounded-lg border border-destructive/30 bg-destructive/10 p-4">
+          <AlertCircle className="mt-0.5 size-5 shrink-0 text-destructive" />
+          <p className="text-sm text-destructive">{error}</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Sub-component for rendering the progress indicator during AI import mapping.
+ */
+function ImportingStep({ importProgress }: ImportingStepProps): React.JSX.Element {
+  return (
+    <div className="flex items-center justify-center min-h-[300px]">
+      <div className="flex flex-col items-center gap-6 max-w-sm w-full">
+        <div className="relative">
+          <div className="flex size-16 items-center justify-center rounded-full bg-primary/10 animate-pulse">
+            <Sparkles className="size-8 text-primary" />
+          </div>
+          {(!importProgress || importProgress.totalBatches === 0) && (
+            <Loader2 className="absolute -top-1 -right-1 size-6 animate-spin text-primary" />
+          )}
+        </div>
+        <div className="text-center w-full">
+          <h3 className="text-lg font-semibold text-foreground">
+            Processing with AI
+          </h3>
+          {importProgress && importProgress.totalBatches > 0 ? (
+            <>
+              <p className="mt-2 text-sm text-muted-foreground">
+                Processing batch {importProgress.currentBatch} of{" "}
+                {importProgress.totalBatches} ({importProgress.percentage}%)
+              </p>
+              <div className="mt-4 grid grid-cols-3 gap-2 text-xs font-mono text-center">
+                <div className="bg-emerald-500/10 text-emerald-400 p-2 rounded-lg border border-emerald-500/20">
+                  <div className="text-base font-bold">{importProgress.importedCount}</div>
+                  <div className="text-[10px] opacity-80 mt-0.5">Imported</div>
+                </div>
+                <div className="bg-amber-500/10 text-amber-400 p-2 rounded-lg border border-amber-500/20">
+                  <div className="text-base font-bold">{importProgress.skippedCount}</div>
+                  <div className="text-[10px] opacity-80 mt-0.5">Skipped</div>
+                </div>
+                <div className="bg-red-500/10 text-red-400 p-2 rounded-lg border border-red-500/20">
+                  <div className="text-base font-bold">{importProgress.failedCount}</div>
+                  <div className="text-[10px] opacity-80 mt-0.5">Failed</div>
+                </div>
+              </div>
+            </>
+          ) : (
+            <>
+              <p className="mt-2 text-sm text-muted-foreground">
+                Mapping and extracting your leads using Groq AI...
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground/60 animate-pulse">
+                This may take a moment depending on the file size.
+              </p>
+            </>
+          )}
+        </div>
+        <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+          {importProgress && importProgress.totalBatches > 0 ? (
+            <div
+              className="h-full rounded-full bg-primary transition-all duration-300"
+              style={{ width: `${importProgress.percentage}%` }}
+            />
+          ) : (
+            <div className="h-full animate-pulse rounded-full bg-primary" style={{ width: "60%" }} />
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Sub-component for rendering the tabbed import results (Imported / Skipped / Failed).
+ */
+function ImportResultsStep({
+  importResult,
+  fileName,
+  activeTab,
+  setActiveTab,
+}: ImportResultsStepProps): React.JSX.Element {
+  return (
+    <div className="space-y-4">
+      {/* Top Section: Uploaded File & Export Button */}
+      <div className="flex items-center justify-between gap-4 rounded-xl border border-border bg-card/60 px-4 py-3.5 shadow-sm">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+            <FileSpreadsheet className="size-5 text-primary" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-xs text-muted-foreground font-medium">Uploaded File</p>
+            <p className="truncate text-sm font-semibold text-foreground font-mono" title={fileName}>
+              {fileName || "leads.csv"}
+            </p>
+          </div>
+        </div>
+        <ExportCSVButton
+          data={
+            activeTab === "imported"
+              ? importResult.importedLeads
+              : activeTab === "skipped"
+              ? importResult.skippedLeads
+              : importResult.failedLeads
+          }
+          filename={`${activeTab}_leads_${fileName || "export.csv"}`}
+          className="shrink-0"
+        />
+      </div>
+
+      {/* Summary card */}
+      <div className="rounded-xl border border-primary/30 bg-primary/5 p-4">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/10">
+            <CheckCircle2 className="size-5 text-primary" />
+          </div>
+          <div>
+            <h3 className="text-sm font-semibold text-foreground">
+              Import Complete
+            </h3>
+            <p className="text-xs text-muted-foreground">
+              {importResult.totalProcessed} rows processed
+            </p>
+          </div>
+        </div>
+        {/* Clickable stat tiles */}
+        <div className="grid grid-cols-4 gap-2">
+          {/* Total — not filterable, just informational */}
+          <div className="rounded-lg border border-border bg-card/50 p-2.5 text-center">
+            <p className="text-xl font-bold text-foreground">
+              {importResult.totalProcessed}
+            </p>
+            <p className="text-[10px] text-muted-foreground mt-0.5 uppercase tracking-wide">
+              Total
+            </p>
+          </div>
+          {/* Imported */}
+          <button
+            type="button"
+            onClick={() => setActiveTab("imported")}
+            className={cn(
+              "rounded-lg border p-2.5 text-center transition-all cursor-pointer",
+              activeTab === "imported"
+                ? "border-primary bg-primary/20 ring-2 ring-primary/30"
+                : "border-primary/30 bg-primary/10 hover:bg-primary/20"
+            )}
+          >
+            <p className="text-xl font-bold text-primary">{importResult.importedCount}</p>
+            <p className="text-[10px] text-muted-foreground mt-0.5 uppercase tracking-wide">Imported</p>
+          </button>
+          {/* Skipped */}
+          <button
+            type="button"
+            onClick={() => setActiveTab("skipped")}
+            className={cn(
+              "rounded-lg border p-2.5 text-center transition-all cursor-pointer",
+              activeTab === "skipped"
+                ? "border-yellow-500 bg-yellow-500/20 ring-2 ring-yellow-500/30"
+                : "border-yellow-500/30 bg-yellow-500/10 hover:bg-yellow-500/20"
+            )}
+          >
+            <p className="text-xl font-bold text-yellow-500">{importResult.skippedCount}</p>
+            <p className="text-[10px] text-muted-foreground mt-0.5 uppercase tracking-wide">Skipped</p>
+          </button>
+          {/* Failed */}
+          <button
+            type="button"
+            onClick={() => setActiveTab("failed")}
+            className={cn(
+              "rounded-lg border p-2.5 text-center transition-all cursor-pointer",
+              activeTab === "failed"
+                ? "border-destructive bg-destructive/20 ring-2 ring-destructive/30"
+                : "border-destructive/30 bg-destructive/10 hover:bg-destructive/20"
+            )}
+          >
+            <p className="text-xl font-bold text-destructive">{importResult.failedCount}</p>
+            <p className="text-[10px] text-muted-foreground mt-0.5 uppercase tracking-wide">Failed</p>
+          </button>
+        </div>
+      </div>
+
+      {/* Filtered results table */}
+      {activeTab === "imported" && (
+        importResult?.importedLeads?.length > 0 ? (
+          <DataTable
+            data={importResult.importedLeads}
+            columns={[
+              { key: "created_at", label: "Created At", render: (row: TargetLead): React.ReactNode => formatISTDate(row.created_at) },
+              { key: "name", label: "Name" },
+              { key: "email", label: "Email" },
+              { key: "country_code", label: "Country Code" },
+              { key: "mobile_without_country_code", label: "Mobile" },
+              { key: "company", label: "Company" },
+              { key: "city", label: "City" },
+              { key: "state", label: "State" },
+              { key: "country", label: "Country" },
+              { key: "lead_owner", label: "Lead Owner" },
+              { key: "crm_status", label: "Status" },
+              { key: "crm_note", label: "Notes/Remarks" },
+              { key: "data_source", label: "Source" },
+              { key: "possession_time", label: "Possession Time" },
+              { key: "description", label: "Description" },
+            ]}
+            maxHeight={300}
+          />
+        ) : (
+          <p className="text-center text-sm text-muted-foreground py-8">No imported leads.</p>
+        )
+      )}
+
+      {activeTab === "skipped" && (
+        importResult?.skippedLeads?.length > 0 ? (
+          <DataTable
+            data={importResult.skippedLeads}
+            columns={[
+              { key: "created_at", label: "Created At", render: (row: TargetLead): React.ReactNode => formatISTDate(row.created_at) },
+              { key: "name", label: "Name" },
+              { key: "email", label: "Email" },
+              { key: "country_code", label: "Country Code" },
+              { key: "mobile_without_country_code", label: "Mobile" },
+              { key: "company", label: "Company" },
+              { key: "city", label: "City" },
+              { key: "state", label: "State" },
+              { key: "country", label: "Country" },
+              { key: "lead_owner", label: "Lead Owner" },
+              { key: "crm_status", label: "Status" },
+              { key: "crm_note", label: "Notes/Remarks" },
+              { key: "data_source", label: "Source" },
+              { key: "possession_time", label: "Possession Time" },
+              { key: "description", label: "Description" },
+            ]}
+            maxHeight={300}
+          />
+        ) : (
+          <p className="text-center text-sm text-muted-foreground py-8">No skipped leads.</p>
+        )
+      )}
+
+      {activeTab === "failed" && (
+        importResult?.failedLeads?.length > 0 ? (
+          <DataTable
+            data={importResult.failedLeads}
+            columns={[
+              { key: "created_at", label: "Created At", render: (row: TargetLead): React.ReactNode => formatISTDate(row.created_at) },
+              { key: "name", label: "Name" },
+              { key: "email", label: "Email" },
+              { key: "country_code", label: "Country Code" },
+              { key: "mobile_without_country_code", label: "Mobile" },
+              { key: "company", label: "Company" },
+              { key: "city", label: "City" },
+              { key: "state", label: "State" },
+              { key: "country", label: "Country" },
+              { key: "lead_owner", label: "Lead Owner" },
+              { key: "crm_status", label: "Status" },
+              { key: "crm_note", label: "Reason/Error" },
+              { key: "data_source", label: "Source" },
+              { key: "possession_time", label: "Possession Time" },
+              { key: "description", label: "Description" },
+            ]}
+            maxHeight={300}
+          />
+        ) : (
+          <p className="text-center text-sm text-muted-foreground py-8">No failed leads.</p>
+        )
+      )}
+    </div>
+  );
 }
 
 /**
@@ -42,20 +380,31 @@ export function ImportModal({
   // Active tab for results filtering: "imported" | "skipped" | "failed"
   const [activeTab, setActiveTab] = useState<"imported" | "skipped" | "failed">("imported");
 
+  // Keep references to latest values to avoid re-subscribing in useEffect
+  const onCloseRef = useRef(onClose);
+  const handleResetRef = useRef(handleReset);
+  const stepRef = useRef(step);
+
+  useEffect(() => {
+    onCloseRef.current = onClose;
+    handleResetRef.current = handleReset;
+    stepRef.current = step;
+  });
+
   // Close on Escape key
   useEffect(() => {
     if (!isOpen) return;
 
     const handleKeyDown = (e: KeyboardEvent): void => {
-      if (e.key === "Escape" && step !== "importing") {
-        onClose();
-        handleReset();
+      if (e.key === "Escape" && stepRef.current !== "importing") {
+        onCloseRef.current();
+        handleResetRef.current();
       }
     };
 
     document.addEventListener("keydown", handleKeyDown);
     return (): void => document.removeEventListener("keydown", handleKeyDown);
-  }, [isOpen, step, onClose, handleReset]);
+  }, [isOpen]);
 
   // Prevent body scrolling when modal is open
   useEffect(() => {
@@ -93,6 +442,7 @@ export function ImportModal({
   return (
     <div
       ref={backdropRef}
+      role="presentation"
       onClick={handleBackdropClick}
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-fade-in"
     >
@@ -147,270 +497,29 @@ export function ImportModal({
 
           {/* Preview Step */}
           {step === "preview" && (
-            <div className="space-y-4">
-              {/* File card */}
-              {fileName && (
-                <div className="flex items-center gap-3 rounded-xl border border-border bg-card/60 px-4 py-3">
-                  <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
-                    <FileSpreadsheet className="size-5 text-primary" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-semibold text-foreground">
-                      {fileName}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {(fileSize / 1024).toFixed(1)} KB · {rawRecords.length} rows · {headers.length} columns
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={handleReset}
-                    className="flex size-7 shrink-0 items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors cursor-pointer"
-                    aria-label="Remove file"
-                  >
-                    <X className="size-4" />
-                  </button>
-                </div>
-              )}
-
-              {/* CSV Preview Table */}
-              <DataTable
-                data={rawRecords}
-                columns={previewColumns}
-                maxHeight={340}
-              />
-
-              {error && (
-                <div className="flex items-start gap-3 rounded-lg border border-destructive/30 bg-destructive/10 p-4">
-                  <AlertCircle className="mt-0.5 size-5 shrink-0 text-destructive" />
-                  <p className="text-sm text-destructive">{error}</p>
-                </div>
-              )}
-            </div>
+            <ImportPreviewStep
+              fileName={fileName}
+              fileSize={fileSize}
+              rawRecords={rawRecords}
+              previewColumns={previewColumns}
+              error={error}
+              handleReset={handleReset}
+            />
           )}
 
           {/* Importing Step */}
           {step === "importing" && (
-            <div className="flex items-center justify-center min-h-[300px]">
-              <div className="flex flex-col items-center gap-6 max-w-sm w-full">
-                <div className="relative">
-                  <div className="flex size-16 items-center justify-center rounded-full bg-primary/10 animate-pulse">
-                    <Sparkles className="size-8 text-primary" />
-                  </div>
-                  {(!importProgress || importProgress.totalBatches === 0) && (
-                    <Loader2 className="absolute -top-1 -right-1 size-6 animate-spin text-primary" />
-                  )}
-                </div>
-                <div className="text-center w-full">
-                  <h3 className="text-lg font-semibold text-foreground">
-                    Processing with AI
-                  </h3>
-                  {importProgress && importProgress.totalBatches > 0 ? (
-                    <>
-                      <p className="mt-2 text-sm text-muted-foreground">
-                        Processing batch {importProgress.currentBatch} of{" "}
-                        {importProgress.totalBatches} ({importProgress.percentage}%)
-                      </p>
-                      <div className="mt-4 grid grid-cols-3 gap-2 text-xs font-mono text-center">
-                        <div className="bg-emerald-500/10 text-emerald-400 p-2 rounded-lg border border-emerald-500/20">
-                          <div className="text-base font-bold">{importProgress.importedCount}</div>
-                          <div className="text-[10px] opacity-80 mt-0.5">Imported</div>
-                        </div>
-                        <div className="bg-amber-500/10 text-amber-400 p-2 rounded-lg border border-amber-500/20">
-                          <div className="text-base font-bold">{importProgress.skippedCount}</div>
-                          <div className="text-[10px] opacity-80 mt-0.5">Skipped</div>
-                        </div>
-                        <div className="bg-red-500/10 text-red-400 p-2 rounded-lg border border-red-500/20">
-                          <div className="text-base font-bold">{importProgress.failedCount}</div>
-                          <div className="text-[10px] opacity-80 mt-0.5">Failed</div>
-                        </div>
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      <p className="mt-2 text-sm text-muted-foreground">
-                        Mapping and extracting your leads using Groq AI...
-                      </p>
-                      <p className="mt-1 text-xs text-muted-foreground/60 animate-pulse">
-                        This may take a moment depending on the file size.
-                      </p>
-                    </>
-                  )}
-                </div>
-                <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
-                  {importProgress && importProgress.totalBatches > 0 ? (
-                    <div
-                      className="h-full rounded-full bg-primary transition-all duration-300"
-                      style={{ width: `${importProgress.percentage}%` }}
-                    />
-                  ) : (
-                    <div className="h-full animate-pulse rounded-full bg-primary" style={{ width: "60%" }} />
-                  )}
-                </div>
-              </div>
-            </div>
+            <ImportingStep importProgress={importProgress} />
           )}
 
           {/* Results Step */}
           {step === "results" && importResult && (
-            <div className="space-y-4">
-              {/* Summary card */}
-              <div className="rounded-xl border border-primary/30 bg-primary/5 p-4">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/10">
-                    <CheckCircle2 className="size-5 text-primary" />
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-semibold text-foreground">
-                      Import Complete
-                    </h3>
-                    <p className="text-xs text-muted-foreground">
-                      {fileName && `${fileName} · `}
-                      {importResult.totalProcessed} rows processed
-                    </p>
-                  </div>
-                </div>
-                {/* Clickable stat tiles */}
-                <div className="grid grid-cols-4 gap-2">
-                  {/* Total — not filterable, just informational */}
-                  <div className="rounded-lg border border-border bg-card/50 p-2.5 text-center">
-                    <p className="text-xl font-bold text-foreground">
-                      {importResult.totalProcessed}
-                    </p>
-                    <p className="text-[10px] text-muted-foreground mt-0.5 uppercase tracking-wide">
-                      Total
-                    </p>
-                  </div>
-                  {/* Imported */}
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab("imported")}
-                    className={cn(
-                      "rounded-lg border p-2.5 text-center transition-all cursor-pointer",
-                      activeTab === "imported"
-                        ? "border-primary bg-primary/20 ring-2 ring-primary/30"
-                        : "border-primary/30 bg-primary/10 hover:bg-primary/20"
-                    )}
-                  >
-                    <p className="text-xl font-bold text-primary">{importResult.importedCount}</p>
-                    <p className="text-[10px] text-muted-foreground mt-0.5 uppercase tracking-wide">Imported</p>
-                  </button>
-                  {/* Skipped */}
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab("skipped")}
-                    className={cn(
-                      "rounded-lg border p-2.5 text-center transition-all cursor-pointer",
-                      activeTab === "skipped"
-                        ? "border-yellow-500 bg-yellow-500/20 ring-2 ring-yellow-500/30"
-                        : "border-yellow-500/30 bg-yellow-500/10 hover:bg-yellow-500/20"
-                    )}
-                  >
-                    <p className="text-xl font-bold text-yellow-500">{importResult.skippedCount}</p>
-                    <p className="text-[10px] text-muted-foreground mt-0.5 uppercase tracking-wide">Skipped</p>
-                  </button>
-                  {/* Failed */}
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab("failed")}
-                    className={cn(
-                      "rounded-lg border p-2.5 text-center transition-all cursor-pointer",
-                      activeTab === "failed"
-                        ? "border-destructive bg-destructive/20 ring-2 ring-destructive/30"
-                        : "border-destructive/30 bg-destructive/10 hover:bg-destructive/20"
-                    )}
-                  >
-                    <p className="text-xl font-bold text-destructive">{importResult.failedCount}</p>
-                    <p className="text-[10px] text-muted-foreground mt-0.5 uppercase tracking-wide">Failed</p>
-                  </button>
-                </div>
-              </div>
-
-              {/* Filtered results table */}
-              {activeTab === "imported" && (
-                importResult?.importedLeads?.length > 0 ? (
-                  <DataTable
-                    data={importResult.importedLeads}
-                    columns={[
-                      { key: "created_at", label: "Created At", render: (row: TargetLead): React.ReactNode => formatISTDate(row.created_at) },
-                      { key: "name", label: "Name" },
-                      { key: "email", label: "Email" },
-                      { key: "country_code", label: "Country Code" },
-                      { key: "mobile_without_country_code", label: "Mobile" },
-                      { key: "company", label: "Company" },
-                      { key: "city", label: "City" },
-                      { key: "state", label: "State" },
-                      { key: "country", label: "Country" },
-                      { key: "lead_owner", label: "Lead Owner" },
-                      { key: "crm_status", label: "Status" },
-                      { key: "crm_note", label: "Notes/Remarks" },
-                      { key: "data_source", label: "Source" },
-                      { key: "possession_time", label: "Possession Time" },
-                      { key: "description", label: "Description" },
-                    ]}
-                    maxHeight={300}
-                  />
-                ) : (
-                  <p className="text-center text-sm text-muted-foreground py-8">No imported leads.</p>
-                )
-              )}
-
-              {activeTab === "skipped" && (
-                importResult?.skippedLeads?.length > 0 ? (
-                  <DataTable
-                    data={importResult.skippedLeads}
-                    columns={[
-                      { key: "created_at", label: "Created At", render: (row: TargetLead): React.ReactNode => formatISTDate(row.created_at) },
-                      { key: "name", label: "Name" },
-                      { key: "email", label: "Email" },
-                      { key: "country_code", label: "Country Code" },
-                      { key: "mobile_without_country_code", label: "Mobile" },
-                      { key: "company", label: "Company" },
-                      { key: "city", label: "City" },
-                      { key: "state", label: "State" },
-                      { key: "country", label: "Country" },
-                      { key: "lead_owner", label: "Lead Owner" },
-                      { key: "crm_status", label: "Status" },
-                      { key: "crm_note", label: "Notes/Remarks" },
-                      { key: "data_source", label: "Source" },
-                      { key: "possession_time", label: "Possession Time" },
-                      { key: "description", label: "Description" },
-                    ]}
-                    maxHeight={300}
-                  />
-                ) : (
-                  <p className="text-center text-sm text-muted-foreground py-8">No skipped leads.</p>
-                )
-              )}
-
-              {activeTab === "failed" && (
-                importResult?.failedLeads?.length > 0 ? (
-                  <DataTable
-                    data={importResult.failedLeads}
-                    columns={[
-                      { key: "created_at", label: "Created At", render: (row: TargetLead): React.ReactNode => formatISTDate(row.created_at) },
-                      { key: "name", label: "Name" },
-                      { key: "email", label: "Email" },
-                      { key: "country_code", label: "Country Code" },
-                      { key: "mobile_without_country_code", label: "Mobile" },
-                      { key: "company", label: "Company" },
-                      { key: "city", label: "City" },
-                      { key: "state", label: "State" },
-                      { key: "country", label: "Country" },
-                      { key: "lead_owner", label: "Lead Owner" },
-                      { key: "crm_status", label: "Status" },
-                      { key: "crm_note", label: "Reason/Error" },
-                      { key: "data_source", label: "Source" },
-                      { key: "possession_time", label: "Possession Time" },
-                      { key: "description", label: "Description" },
-                    ]}
-                    maxHeight={300}
-                  />
-                ) : (
-                  <p className="text-center text-sm text-muted-foreground py-8">No failed leads.</p>
-                )
-              )}
-            </div>
+            <ImportResultsStep
+              importResult={importResult}
+              fileName={fileName}
+              activeTab={activeTab}
+              setActiveTab={setActiveTab}
+            />
           )}
         </div>
 
