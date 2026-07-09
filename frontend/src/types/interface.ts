@@ -47,6 +47,7 @@ export interface ImportConfirmResponse {
   failedCount: number;
   importedLeads: TargetLead[];
   skippedLeads: TargetLead[];
+  failedLeads: TargetLead[];
 }
 
 /** Structured API error */
@@ -82,6 +83,7 @@ export interface StreamSummaryMessage {
   failedCount: number;
   importedLeads: TargetLead[];
   skippedLeads: TargetLead[];
+  failedLeads: TargetLead[];
 }
 
 /** Union of all possible stream messages */

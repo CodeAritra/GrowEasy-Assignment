@@ -46,6 +46,7 @@ export class LeadController {
       const batchSize: number = 15;
       const importedLeads: TargetLead[] = [];
       const skippedLeads: TargetLead[] = [];
+      const failedLeads: TargetLead[] = [];
       let successCount: number = 0;
       let skippedCount: number = 0;
       let failedCount: number = 0;
@@ -67,13 +68,39 @@ export class LeadController {
               importedLeads.push(lead);
               successCount++;
             } else {
-              skippedLeads.push(lead);
+              // Tag the reason this lead was skipped
+              skippedLeads.push({
+                ...lead,
+                crm_note: lead.crm_note
+                  ? `${lead.crm_note} | Skipped: missing email and mobile`
+                  : "Skipped: missing email and mobile",
+              });
               skippedCount++;
             }
           }
         } catch (err: unknown) {
           const errMsg: string = err instanceof Error ? err.message : String(err);
           console.error(`Error mapping batch starting at index ${i}:`, errMsg);
+          // Build stub lead objects for every raw row in the failed batch
+          for (const raw of batch) {
+            failedLeads.push({
+              created_at: "",
+              name: raw["name"] ?? raw["Name"] ?? "",
+              email: raw["email"] ?? raw["Email"] ?? "",
+              country_code: "",
+              mobile_without_country_code: raw["mobile"] ?? raw["Mobile"] ?? raw["phone"] ?? "",
+              company: raw["company"] ?? raw["Company"] ?? "",
+              city: raw["city"] ?? raw["City"] ?? "",
+              state: "",
+              country: "",
+              lead_owner: "",
+              crm_status: "BAD_LEAD",
+              crm_note: `Failed: AI mapping error — ${errMsg}`,
+              data_source: "",
+              possession_time: "",
+              description: "",
+            });
+          }
           failedCount += batch.length;
         }
 
@@ -97,7 +124,8 @@ export class LeadController {
         skippedCount,
         failedCount,
         importedLeads,
-        skippedLeads
+        skippedLeads,
+        failedLeads
       };
       res.write(`data: ${JSON.stringify(finalSummary)}\n\n`);
       res.end();

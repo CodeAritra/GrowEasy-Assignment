@@ -3,7 +3,6 @@
 import React from "react";
 import { Sparkles } from "lucide-react";
 import { useCSVImporter } from "@/hooks/useCSVImporter";
-import { StepIndicator } from "@/components/StepIndicator";
 import { FileUpload } from "@/components/FileUpload";
 import { CSVPreviewTable } from "@/components/CSVPreviewTable";
 import { ParsedResults } from "@/components/ParsedResults";
@@ -48,7 +47,6 @@ export function CSVImporterWizard(): React.JSX.Element {
             </div>
           </div>
           <div className="flex items-center gap-4">
-            <StepIndicator currentStep={step} />
             <ThemeToggle />
           </div>
         </div>

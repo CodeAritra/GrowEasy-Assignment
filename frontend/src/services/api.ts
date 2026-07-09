@@ -132,6 +132,7 @@ export async function importConfirm(
             failedCount: parsed.failedCount,
             importedLeads: parsed.importedLeads,
             skippedLeads: parsed.skippedLeads,
+            failedLeads: parsed.failedLeads,
           };
           resolvePromise(finalSummary);
           ctrl.abort(); // close the connection

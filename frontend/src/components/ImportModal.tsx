@@ -196,7 +196,9 @@ export function ImportModal({
                   <div className="flex size-16 items-center justify-center rounded-full bg-primary/10 animate-pulse">
                     <Sparkles className="size-8 text-primary" />
                   </div>
-                  <Loader2 className="absolute -top-1 -right-1 size-6 animate-spin text-primary" />
+                  {(!importProgress || importProgress.totalBatches === 0) && (
+                    <Loader2 className="absolute -top-1 -right-1 size-6 animate-spin text-primary" />
+                  )}
                 </div>
                 <div className="text-center w-full">
                   <h3 className="text-lg font-semibold text-foreground">
@@ -325,7 +327,7 @@ export function ImportModal({
 
               {/* Filtered results table */}
               {activeTab === "imported" && (
-                importResult.importedLeads.length > 0 ? (
+                importResult?.importedLeads?.length > 0 ? (
                   <DataTable
                     data={importResult.importedLeads}
                     columns={[
@@ -344,7 +346,7 @@ export function ImportModal({
               )}
 
               {activeTab === "skipped" && (
-                importResult.skippedLeads.length > 0 ? (
+                importResult?.skippedLeads?.length > 0 ? (
                   <DataTable
                     data={importResult.skippedLeads}
                     columns={[
@@ -363,15 +365,21 @@ export function ImportModal({
               )}
 
               {activeTab === "failed" && (
-                <div className="flex flex-col items-center justify-center py-8 rounded-xl border border-destructive/20 bg-destructive/5 gap-2">
-                  <AlertCircle className="size-6 text-destructive" />
-                  <p className="text-sm font-medium text-foreground">
-                    {importResult.failedCount} batch{importResult.failedCount !== 1 ? "es" : ""} failed
-                  </p>
-                  <p className="text-xs text-muted-foreground text-center max-w-xs">
-                    These rows could not be processed by the AI. Check the server logs for details.
-                  </p>
-                </div>
+                importResult?.failedLeads?.length > 0 ? (
+                  <DataTable
+                    data={importResult.failedLeads}
+                    columns={[
+                      { key: "name", label: "Name" },
+                      { key: "email", label: "Email" },
+                      { key: "mobile_without_country_code", label: "Mobile" },
+                      { key: "company", label: "Company" },
+                      { key: "crm_note", label: "Reason" },
+                    ]}
+                    maxHeight={300}
+                  />
+                ) : (
+                  <p className="text-center text-sm text-muted-foreground py-8">No failed leads.</p>
+                )
               )}
             </div>
           )}
