@@ -1,7 +1,9 @@
 import type {
   RawRecord,
+  TargetLead,
   UploadResponse,
   ImportConfirmResponse,
+  LeadsResponse,
   ApiErrorResponse,
   StreamMessage,
 } from "@/types/interface";
@@ -59,6 +61,20 @@ export async function uploadCSV(file: File): Promise<UploadResponse> {
   }
 
   return (await response.json()) as UploadResponse;
+}
+
+/**
+ * Fetches all existing leads from the backend database.
+ */
+export async function fetchLeads(): Promise<TargetLead[]> {
+  const response: Response = await fetch(`${API_BASE_URL}/leads`);
+
+  if (!response.ok) {
+    return handleErrorResponse(response);
+  }
+
+  const data = (await response.json()) as LeadsResponse;
+  return data.leads;
 }
 
 /**

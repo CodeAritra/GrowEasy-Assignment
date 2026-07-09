@@ -12,6 +12,8 @@ interface UseCSVImporterReturn {
   step: WizardStep;
   rawRecords: RawRecord[];
   headers: string[];
+  fileName: string;
+  fileSize: number;
   importResult: ImportConfirmResponse | null;
   importProgress: ImportProgress | null;
   isUploading: boolean;
@@ -29,6 +31,8 @@ export function useCSVImporter(): UseCSVImporterReturn {
   const [step, setStep] = useState<WizardStep>("upload");
   const [rawRecords, setRawRecords] = useState<RawRecord[]>([]);
   const [headers, setHeaders] = useState<string[]>([]);
+  const [fileName, setFileName] = useState<string>("");
+  const [fileSize, setFileSize] = useState<number>(0);
   const [importResult, setImportResult] =
     useState<ImportConfirmResponse | null>(null);
   const [importProgress, setImportProgress] = useState<ImportProgress | null>(null);
@@ -47,6 +51,8 @@ export function useCSVImporter(): UseCSVImporterReturn {
       // Upload to backend for server-side parsing
       const response = await uploadCSV(file);
 
+      setFileName(file.name);
+      setFileSize(file.size);
       setRawRecords(response.records);
       setHeaders(response.headers);
       setStep("preview");
@@ -75,6 +81,8 @@ export function useCSVImporter(): UseCSVImporterReturn {
 
           setRawRecords(result.data);
           setHeaders(Object.keys(result.data[0]));
+          setFileName(file.name);
+          setFileSize(file.size);
           setStep("preview");
         } catch {
           setError(
@@ -139,6 +147,8 @@ export function useCSVImporter(): UseCSVImporterReturn {
     setStep("upload");
     setRawRecords([]);
     setHeaders([]);
+    setFileName("");
+    setFileSize(0);
     setImportResult(null);
     setImportProgress(null);
     setIsUploading(false);
@@ -149,6 +159,8 @@ export function useCSVImporter(): UseCSVImporterReturn {
     step,
     rawRecords,
     headers,
+    fileName,
+    fileSize,
     importResult,
     importProgress,
     isUploading,

@@ -1,0 +1,440 @@
+"use client";
+
+import React, { useEffect, useRef, useState } from "react";
+import { X, CheckCircle2, AlertCircle, Upload, Sparkles, Loader2, FileSpreadsheet } from "lucide-react";
+import { useCSVImporter } from "@/hooks/useCSVImporter";
+import { FileUpload } from "@/components/FileUpload";
+import { DataTable } from "@/components/DataTable";
+import { cn } from "@/lib/utils";
+
+interface ImportModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onImportComplete: () => void;
+}
+
+/**
+ * Modal dialog for the CSV import wizard flow.
+ * Contains: Upload → Preview → Importing → Results inside a modal overlay.
+ */
+export function ImportModal({
+  isOpen,
+  onClose,
+  onImportComplete,
+}: ImportModalProps): React.JSX.Element | null {
+  const backdropRef = useRef<HTMLDivElement>(null);
+  const {
+    step,
+    rawRecords,
+    headers,
+    fileName,
+    fileSize,
+    importResult,
+    importProgress,
+    isUploading,
+    error,
+    handleUpload,
+    handleConfirmImport,
+    handleReset,
+  } = useCSVImporter();
+
+  // Active tab for results filtering: "imported" | "skipped" | "failed"
+  const [activeTab, setActiveTab] = useState<"imported" | "skipped" | "failed">("imported");
+
+  // Close on Escape key
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleKeyDown = (e: KeyboardEvent): void => {
+      if (e.key === "Escape" && step !== "importing") {
+        onClose();
+        handleReset();
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return (): void => document.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, step, onClose, handleReset]);
+
+  // Prevent body scrolling when modal is open
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return (): void => {
+      document.body.style.overflow = "";
+    };
+  }, [isOpen]);
+
+  if (!isOpen) return null;
+
+  const handleBackdropClick = (e: React.MouseEvent): void => {
+    if (e.target === backdropRef.current && step !== "importing") {
+      onClose();
+      handleReset();
+    }
+  };
+
+  const handleCloseAndRefresh = (): void => {
+    onImportComplete();
+    onClose();
+    handleReset();
+  };
+
+  // Generate column definitions for CSV preview
+  const previewColumns = headers.map((header) => ({
+    key: header,
+    label: header,
+  }));
+
+  return (
+    <div
+      ref={backdropRef}
+      onClick={handleBackdropClick}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-fade-in"
+    >
+      <div
+        className={cn(
+          "relative flex flex-col bg-card rounded-2xl shadow-2xl border border-border",
+          "w-[95vw] max-w-4xl max-h-[90vh]",
+          "animate-slide-up"
+        )}
+      >
+        {/* Modal Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-border shrink-0">
+          <div>
+            <h2 className="text-lg font-bold text-foreground">
+              Import Leads via CSV
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              {step === "upload" &&
+                "Upload a CSV file to bulk import leads into your system."}
+              {step === "preview" &&
+                `Preview: ${rawRecords.length} rows · ${headers.length} columns`}
+              {step === "importing" &&
+                "AI is mapping your data to the GrowEasy CRM format..."}
+              {step === "results" && "Import completed successfully."}
+            </p>
+          </div>
+          {step !== "importing" && (
+            <button
+              type="button"
+              onClick={() => {
+                onClose();
+                handleReset();
+              }}
+              className="flex items-center justify-center size-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors cursor-pointer"
+              aria-label="Close modal"
+            >
+              <X className="size-5" />
+            </button>
+          )}
+        </div>
+
+        {/* Modal Body */}
+        <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
+          {/* Upload Step */}
+          {step === "upload" && (
+            <FileUpload
+              onUpload={handleUpload}
+              isUploading={isUploading}
+              error={error}
+            />
+          )}
+
+          {/* Preview Step */}
+          {step === "preview" && (
+            <div className="space-y-4">
+              {/* File card */}
+              {fileName && (
+                <div className="flex items-center gap-3 rounded-xl border border-border bg-card/60 px-4 py-3">
+                  <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+                    <FileSpreadsheet className="size-5 text-primary" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-semibold text-foreground">
+                      {fileName}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {(fileSize / 1024).toFixed(1)} KB · {rawRecords.length} rows · {headers.length} columns
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleReset}
+                    className="flex size-7 shrink-0 items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors cursor-pointer"
+                    aria-label="Remove file"
+                  >
+                    <X className="size-4" />
+                  </button>
+                </div>
+              )}
+
+              {/* CSV Preview Table */}
+              <DataTable
+                data={rawRecords}
+                columns={previewColumns}
+                maxHeight={340}
+              />
+
+              {error && (
+                <div className="flex items-start gap-3 rounded-lg border border-destructive/30 bg-destructive/10 p-4">
+                  <AlertCircle className="mt-0.5 size-5 shrink-0 text-destructive" />
+                  <p className="text-sm text-destructive">{error}</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Importing Step */}
+          {step === "importing" && (
+            <div className="flex items-center justify-center min-h-[300px]">
+              <div className="flex flex-col items-center gap-6 max-w-sm w-full">
+                <div className="relative">
+                  <div className="flex size-16 items-center justify-center rounded-full bg-primary/10 animate-pulse">
+                    <Sparkles className="size-8 text-primary" />
+                  </div>
+                  <Loader2 className="absolute -top-1 -right-1 size-6 animate-spin text-primary" />
+                </div>
+                <div className="text-center w-full">
+                  <h3 className="text-lg font-semibold text-foreground">
+                    Processing with AI
+                  </h3>
+                  {importProgress && importProgress.totalBatches > 0 ? (
+                    <>
+                      <p className="mt-2 text-sm text-muted-foreground">
+                        Processing batch {importProgress.currentBatch} of{" "}
+                        {importProgress.totalBatches} ({importProgress.percentage}%)
+                      </p>
+                      <div className="mt-4 grid grid-cols-3 gap-2 text-xs font-mono text-center">
+                        <div className="bg-emerald-500/10 text-emerald-400 p-2 rounded-lg border border-emerald-500/20">
+                          <div className="text-base font-bold">{importProgress.importedCount}</div>
+                          <div className="text-[10px] opacity-80 mt-0.5">Imported</div>
+                        </div>
+                        <div className="bg-amber-500/10 text-amber-400 p-2 rounded-lg border border-amber-500/20">
+                          <div className="text-base font-bold">{importProgress.skippedCount}</div>
+                          <div className="text-[10px] opacity-80 mt-0.5">Skipped</div>
+                        </div>
+                        <div className="bg-red-500/10 text-red-400 p-2 rounded-lg border border-red-500/20">
+                          <div className="text-base font-bold">{importProgress.failedCount}</div>
+                          <div className="text-[10px] opacity-80 mt-0.5">Failed</div>
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <p className="mt-2 text-sm text-muted-foreground">
+                        Mapping and extracting your leads using Groq AI...
+                      </p>
+                      <p className="mt-1 text-xs text-muted-foreground/60 animate-pulse">
+                        This may take a moment depending on the file size.
+                      </p>
+                    </>
+                  )}
+                </div>
+                <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+                  {importProgress && importProgress.totalBatches > 0 ? (
+                    <div
+                      className="h-full rounded-full bg-primary transition-all duration-300"
+                      style={{ width: `${importProgress.percentage}%` }}
+                    />
+                  ) : (
+                    <div className="h-full animate-pulse rounded-full bg-primary" style={{ width: "60%" }} />
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Results Step */}
+          {step === "results" && importResult && (
+            <div className="space-y-4">
+              {/* Summary card */}
+              <div className="rounded-xl border border-primary/30 bg-primary/5 p-4">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/10">
+                    <CheckCircle2 className="size-5 text-primary" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-semibold text-foreground">
+                      Import Complete
+                    </h3>
+                    <p className="text-xs text-muted-foreground">
+                      {fileName && `${fileName} · `}
+                      {importResult.totalProcessed} rows processed
+                    </p>
+                  </div>
+                </div>
+                {/* Clickable stat tiles */}
+                <div className="grid grid-cols-4 gap-2">
+                  {/* Total — not filterable, just informational */}
+                  <div className="rounded-lg border border-border bg-card/50 p-2.5 text-center">
+                    <p className="text-xl font-bold text-foreground">
+                      {importResult.totalProcessed}
+                    </p>
+                    <p className="text-[10px] text-muted-foreground mt-0.5 uppercase tracking-wide">
+                      Total
+                    </p>
+                  </div>
+                  {/* Imported */}
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab("imported")}
+                    className={cn(
+                      "rounded-lg border p-2.5 text-center transition-all cursor-pointer",
+                      activeTab === "imported"
+                        ? "border-primary bg-primary/20 ring-2 ring-primary/30"
+                        : "border-primary/30 bg-primary/10 hover:bg-primary/20"
+                    )}
+                  >
+                    <p className="text-xl font-bold text-primary">{importResult.importedCount}</p>
+                    <p className="text-[10px] text-muted-foreground mt-0.5 uppercase tracking-wide">Imported</p>
+                  </button>
+                  {/* Skipped */}
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab("skipped")}
+                    className={cn(
+                      "rounded-lg border p-2.5 text-center transition-all cursor-pointer",
+                      activeTab === "skipped"
+                        ? "border-yellow-500 bg-yellow-500/20 ring-2 ring-yellow-500/30"
+                        : "border-yellow-500/30 bg-yellow-500/10 hover:bg-yellow-500/20"
+                    )}
+                  >
+                    <p className="text-xl font-bold text-yellow-500">{importResult.skippedCount}</p>
+                    <p className="text-[10px] text-muted-foreground mt-0.5 uppercase tracking-wide">Skipped</p>
+                  </button>
+                  {/* Failed */}
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab("failed")}
+                    className={cn(
+                      "rounded-lg border p-2.5 text-center transition-all cursor-pointer",
+                      activeTab === "failed"
+                        ? "border-destructive bg-destructive/20 ring-2 ring-destructive/30"
+                        : "border-destructive/30 bg-destructive/10 hover:bg-destructive/20"
+                    )}
+                  >
+                    <p className="text-xl font-bold text-destructive">{importResult.failedCount}</p>
+                    <p className="text-[10px] text-muted-foreground mt-0.5 uppercase tracking-wide">Failed</p>
+                  </button>
+                </div>
+              </div>
+
+              {/* Filtered results table */}
+              {activeTab === "imported" && (
+                importResult.importedLeads.length > 0 ? (
+                  <DataTable
+                    data={importResult.importedLeads}
+                    columns={[
+                      { key: "name", label: "Name" },
+                      { key: "email", label: "Email" },
+                      { key: "mobile_without_country_code", label: "Mobile" },
+                      { key: "company", label: "Company" },
+                      { key: "city", label: "City" },
+                      { key: "crm_status", label: "Status" },
+                    ]}
+                    maxHeight={300}
+                  />
+                ) : (
+                  <p className="text-center text-sm text-muted-foreground py-8">No imported leads.</p>
+                )
+              )}
+
+              {activeTab === "skipped" && (
+                importResult.skippedLeads.length > 0 ? (
+                  <DataTable
+                    data={importResult.skippedLeads}
+                    columns={[
+                      { key: "name", label: "Name" },
+                      { key: "email", label: "Email" },
+                      { key: "mobile_without_country_code", label: "Mobile" },
+                      { key: "company", label: "Company" },
+                      { key: "city", label: "City" },
+                      { key: "crm_status", label: "Status" },
+                    ]}
+                    maxHeight={300}
+                  />
+                ) : (
+                  <p className="text-center text-sm text-muted-foreground py-8">No skipped leads.</p>
+                )
+              )}
+
+              {activeTab === "failed" && (
+                <div className="flex flex-col items-center justify-center py-8 rounded-xl border border-destructive/20 bg-destructive/5 gap-2">
+                  <AlertCircle className="size-6 text-destructive" />
+                  <p className="text-sm font-medium text-foreground">
+                    {importResult.failedCount} batch{importResult.failedCount !== 1 ? "es" : ""} failed
+                  </p>
+                  <p className="text-xs text-muted-foreground text-center max-w-xs">
+                    These rows could not be processed by the AI. Check the server logs for details.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Modal Footer */}
+        <div className="flex items-center justify-between px-6 py-4 border-t border-border shrink-0">
+          {step === "upload" && (
+            <div className="flex w-full justify-end">
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  handleReset();
+                }}
+                className="flex items-center gap-2 rounded-lg border border-border px-5 py-2.5 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-foreground transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+            </div>
+          )}
+
+          {step === "preview" && (
+            <>
+              <button
+                type="button"
+                onClick={handleReset}
+                className="flex items-center gap-2 rounded-lg border border-border px-5 py-2.5 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-foreground transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmImport}
+                id="confirm-import-btn"
+                className="flex items-center gap-2 rounded-lg bg-primary px-6 py-2.5 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-all duration-200 hover:shadow-lg hover:shadow-primary/20 cursor-pointer"
+              >
+                <Upload className="size-4" />
+                Confirm Import
+              </button>
+            </>
+          )}
+
+          {step === "importing" && (
+            <div className="w-full text-center text-sm text-muted-foreground">
+              Please wait while AI processes your data...
+            </div>
+          )}
+
+          {step === "results" && (
+            <div className="flex w-full justify-end">
+              <button
+                type="button"
+                onClick={handleCloseAndRefresh}
+                className="flex items-center gap-2 rounded-lg bg-primary px-6 py-2.5 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-all duration-200 cursor-pointer"
+              >
+                <CheckCircle2 className="size-4" />
+                View Leads
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}

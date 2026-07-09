@@ -58,6 +58,11 @@ export interface ApiErrorResponse {
   };
 }
 
+/** Response from GET /api/leads */
+export interface LeadsResponse {
+  leads: TargetLead[];
+}
+
 /** Progress updates sent by the server during streaming */
 export interface StreamProgressMessage {
   type: "progress";
