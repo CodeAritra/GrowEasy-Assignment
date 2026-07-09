@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from "express";
-import { AIService, TargetLead } from "../services/aiService";
+import { AIService } from "../services/aiService";
+import { TargetLead } from "../types/interface";
 import { LeadService } from "../services/leadService";
 import { AppError } from "../utils/AppError";
 

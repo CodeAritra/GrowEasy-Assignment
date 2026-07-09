@@ -2,20 +2,11 @@
 
 import { useState, useCallback } from "react";
 import Papa from "papaparse";
-import type { RawRecord, ImportConfirmResponse } from "@/types/interface";
+import type { RawRecord, ImportConfirmResponse, ImportProgress } from "@/types/interface";
 import { uploadCSV, importConfirm, ApiError } from "@/services/api";
 
 /** Possible steps in the wizard flow */
 export type WizardStep = "upload" | "preview" | "importing" | "results";
-
-export interface ImportProgress {
-  currentBatch: number;
-  totalBatches: number;
-  percentage: number;
-  importedCount: number;
-  skippedCount: number;
-  failedCount: number;
-}
 
 interface UseCSVImporterReturn {
   step: WizardStep;

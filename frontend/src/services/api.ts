@@ -3,30 +3,9 @@ import type {
   UploadResponse,
   ImportConfirmResponse,
   ApiErrorResponse,
-  TargetLead,
+  StreamMessage,
 } from "@/types/interface";
 import { fetchEventSource } from "@microsoft/fetch-event-source";
-
-export interface StreamProgressMessage {
-  type: "progress";
-  batchIndex: number;
-  totalBatches: number;
-  importedCount: number;
-  skippedCount: number;
-  failedCount: number;
-}
-
-export interface StreamSummaryMessage {
-  type: "summary";
-  totalProcessed: number;
-  importedCount: number;
-  skippedCount: number;
-  failedCount: number;
-  importedLeads: TargetLead[];
-  skippedLeads: TargetLead[];
-}
-
-export type StreamMessage = StreamProgressMessage | StreamSummaryMessage;
 
 const API_BASE_URL: string =
   process.env.NEXT_PUBLIC_API_URL!;

@@ -1,5 +1,5 @@
 import { runQuery, allQuery, SqlParam } from "../db/db";
-import { TargetLead } from "./aiService";
+import { TargetLead } from "../types/interface";
 import { parse } from "csv-parse";
 import { AppError } from "../utils/AppError";
 

@@ -1,32 +1,4 @@
-export interface TargetLead {
-  created_at: string;
-  name: string;
-  email: string;
-  country_code: string;
-  mobile_without_country_code: string;
-  company: string;
-  city: string;
-  state: string;
-  country: string;
-  lead_owner: string;
-  crm_status: "GOOD_LEAD_FOLLOW_UP" | "DID_NOT_CONNECT" | "BAD_LEAD" | "SALE_DONE";
-  crm_note: string;
-  data_source: "leads_on_demand" | "meridian_tower" | "eden_park" | "varah_swamy" | "sarjapur_plots" | "";
-  possession_time: string;
-  description: string;
-}
-
-export interface GroqResponse {
-  leads: TargetLead[];
-}
-
-export interface GroqAPIResponse {
-  choices?: {
-    message?: {
-      content?: string;
-    };
-  }[];
-}
+import { TargetLead, GroqResponse, GroqAPIResponse } from "../types/interface";
 
 export class AIService {
   private static GROQ_API_URL: string = process.env.GROQ_API_URL!;

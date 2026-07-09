@@ -2,15 +2,7 @@
 
 import React from "react";
 import { Loader2, Sparkles } from "lucide-react";
-
-export interface ImportProgress {
-  currentBatch: number;
-  totalBatches: number;
-  percentage: number;
-  importedCount: number;
-  skippedCount: number;
-  failedCount: number;
-}
+import type { ImportProgress } from "@/types/interface";
 
 interface LoadingOverlayProps {
   progress?: ImportProgress | null;

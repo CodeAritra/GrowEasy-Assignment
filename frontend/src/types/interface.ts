@@ -57,3 +57,37 @@ export interface ApiErrorResponse {
     details?: string;
   };
 }
+
+/** Progress updates sent by the server during streaming */
+export interface StreamProgressMessage {
+  type: "progress";
+  batchIndex: number;
+  totalBatches: number;
+  importedCount: number;
+  skippedCount: number;
+  failedCount: number;
+}
+
+/** Final summary sent by the server when streaming completes */
+export interface StreamSummaryMessage {
+  type: "summary";
+  totalProcessed: number;
+  importedCount: number;
+  skippedCount: number;
+  failedCount: number;
+  importedLeads: TargetLead[];
+  skippedLeads: TargetLead[];
+}
+
+/** Union of all possible stream messages */
+export type StreamMessage = StreamProgressMessage | StreamSummaryMessage;
+
+/** Frontend progress state tracking */
+export interface ImportProgress {
+  currentBatch: number;
+  totalBatches: number;
+  percentage: number;
+  importedCount: number;
+  skippedCount: number;
+  failedCount: number;
+}
