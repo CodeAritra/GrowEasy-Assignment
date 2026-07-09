@@ -105,7 +105,14 @@ export class LeadController {
         }
 
         // Write progress update after each batch (regardless of success/failure) in SSE format
-        const progressUpdate = {
+        const progressUpdate: {
+          type: string;
+          batchIndex: number;
+          totalBatches: number;
+          importedCount: number;
+          skippedCount: number;
+          failedCount: number;
+        } = {
           type: "progress",
           batchIndex: Math.floor(i / batchSize) + 1,
           totalBatches: Math.ceil(rawRecords.length / batchSize),
@@ -117,7 +124,16 @@ export class LeadController {
       }
 
       // Write final summary in SSE format
-      const finalSummary = {
+      const finalSummary: {
+        type: string;
+        totalProcessed: number;
+        importedCount: number;
+        skippedCount: number;
+        failedCount: number;
+        importedLeads: TargetLead[];
+        skippedLeads: TargetLead[];
+        failedLeads: TargetLead[];
+      } = {
         type: "summary",
         totalProcessed: rawRecords.length,
         importedCount: successCount,
