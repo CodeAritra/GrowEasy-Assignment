@@ -33,7 +33,7 @@ EXPOSE 4000
 
 # Set environment variables
 ENV PORT=4000
-ENV NODE_ENV=production
+ENV NODE_ENV=development
 # Default SQLite path inside a dedicated data directory
 ENV DATABASE_PATH=/app/data/leads.db
 

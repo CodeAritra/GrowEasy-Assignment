@@ -10,9 +10,10 @@ RUN npm install
 # Copy the rest of the source code
 COPY . .
 
-# Receive NEXT_PUBLIC_API_URL at build time and set it as an env var
-ARG NEXT_PUBLIC_API_URL
-ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+# Select environment file (defaults to development)
+ARG APP_ENV=development
+RUN cp .env.${APP_ENV} .env || true
+RUN rm .env.development .env.production || true
 
 # Build Next.js app
 RUN npm run build
@@ -22,8 +23,8 @@ FROM node:20-alpine AS runner
 
 WORKDIR /app
 
-# Set production environment
-ENV NODE_ENV=production
+# Set development environment
+ENV NODE_ENV=development
 
 # Run Next.js as non-root user for security
 RUN addgroup --system --gid 1001 nodejs
