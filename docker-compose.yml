@@ -1,0 +1,33 @@
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "4000:4000"
+    environment:
+      - PORT=${PORT}
+      - FRONTEND_URL=${FRONTEND_URL}
+      - GROQ_API_URL=${GROQ_API_URL}
+      - GROQ_MODEL=${GROQ_MODEL}
+      - GROQ_API_KEY=${GROQ_API_KEY}
+      - DATABASE_PATH=/app/data/leads.db
+    volumes:
+      # Persists the SQLite database so data remains when containers restart
+      - sqlite_data:/app/data
+    restart: always
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    restart: always
+
+volumes:
+  sqlite_data:

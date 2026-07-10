@@ -12,3 +12,12 @@ build/
 coverage/
 .vercel
 demo_leads.csv
+
+# Databases and Data
+*.db
+*.sqlite
+*.sqlite3
+backend/data/
+
+# Docker
+docker-compose.override.yml

@@ -1,8 +1,7 @@
 import sqlite3 from "sqlite3";
 import path from "path";
 
-const DB_PATH: string = path.resolve(__dirname, "../leads.db");
-
+const DB_PATH: string = process.env.DATABASE_PATH !
 export type SqlParam = string | number | boolean | null;
 
 // Initialize database connection

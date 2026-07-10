@@ -7,3 +7,11 @@ leads.db
 *.sqlite
 *.sqlite3
 /demo_leads.csv
+
+# Data and SQLite
+data/
+*.log
+npm-debug.log*
+
+# Docker
+docker-compose.override.yml
