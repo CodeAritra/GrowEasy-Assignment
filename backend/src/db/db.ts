@@ -1,7 +1,15 @@
 import sqlite3 from "sqlite3";
 import path from "path";
+import fs from "fs";
 
-const DB_PATH: string = process.env.DATABASE_PATH !
+const DB_PATH: string = process.env.DATABASE_PATH!;
+
+// Ensure the directory containing the SQLite database file exists
+const dbDir = path.dirname(path.resolve(DB_PATH));
+if (!fs.existsSync(dbDir)) {
+  fs.mkdirSync(dbDir, { recursive: true });
+}
+
 export type SqlParam = string | number | boolean | null;
 
 // Initialize database connection
