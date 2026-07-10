@@ -9,9 +9,9 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "GrowEasy CSV Importer — AI-Powered Lead Extraction",
+  title: "GrowEasy CRM | Aritra Dhank",
   description:
-    "Upload CSV files from any source and use AI to map and extract leads into the unified GrowEasy CRM format.",
+    "Intelligently map and extract CSV lead files from any format into GrowEasy CRM using Groq LLMs. Built by Aritra Dhank.",
 };
 
 export default function RootLayout({

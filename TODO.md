@@ -84,6 +84,6 @@ This document lists the feature-wise implementation checklist, divided strictly 
   - Test suites for SQLite insertions and validations.
 
 ## 3. Infrastructure & Deployment (Bonus)
-- [ ] **Docker Setup**: Add `Dockerfile` and `docker-compose.yml` to run the app seamlessly in containerized environments.
+- [x] **Docker Setup**: Add `Dockerfile` and `docker-compose.yml` to run the app seamlessly in containerized environments.
 - [ ] **Cloud Deployment**: Set up scripts or configurations to deploy the frontend (Vercel) and backend (Railway/Render).
-- [ ] **Comprehensive README**: Detail step-by-step instructions on how to install, configure, test, and run the app.
+- [x] **Comprehensive README**: Detail step-by-step instructions on how to install, configure, test, and run the app.

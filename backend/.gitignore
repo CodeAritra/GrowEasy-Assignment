@@ -1,7 +1,8 @@
 /node_modules
 dist/
 *.tsbuildinfo
-.env*
+.env.development
+.env.production
 leads.db
 *.db
 *.sqlite

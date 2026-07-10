@@ -141,7 +141,7 @@ export function LeadsDashboard(): React.JSX.Element {
             <div>
               <h1 className="text-lg font-bold text-foreground">GrowEasy</h1>
               <p className="text-xs text-muted-foreground">
-                AI-Powered CRM Dashboard
+                AI CRM Dashboard · Powered by Aritra Dhank
               </p>
             </div>
           </div>
@@ -299,7 +299,7 @@ export function LeadsDashboard(): React.JSX.Element {
       {/* Footer */}
       <footer className="border-t border-border py-4">
         <p className="text-center text-xs text-muted-foreground">
-          GrowEasy CRM Dashboard · Powered by Groq AI
+          GrowEasy AI CRM Dashboard · Powered by Aritra Dhank
         </p>
       </footer>
 
