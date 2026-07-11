@@ -1,6 +1,8 @@
 # GrowEasy CRM — AI-Powered CSV Lead Importer
 ### Developed by **Aritra Dhank**
 
+> 🚀 **Live Demo:** [Deployed Application Link](https://grow-easy-assignment-three.vercel.app)
+
 GrowEasy CRM AI Lead Importer is a robust full-stack web application designed to clean, map, and import messy CSV datasets (e.g., Facebook Lead Exports, Google Ads Exports, arbitrary CRM sheets) into a unified GrowEasy CRM schema using the high-performance **Groq LLM AI Engine**.
 
 ---
@@ -20,6 +22,8 @@ GrowEasy CRM AI Lead Importer is a robust full-stack web application designed to
 *   **Dynamic Multi-Environment Setup (Docker & Local):** Full separation of Development and Production environment variables (`.env.development` & `.env.production`) for maximum flexibility.
 *   **Drag & Drop Upload:** Drop area with modern CSS transitions.
 *   **Real-time Batch Progress Indicators:** Shows progress (e.g., "Processing batch 2 of 5...") to provide an interactive user experience.
+*   **Streaming & Incremental Parsing (SSE):** Streams processed batches from the server to the client in real-time as they complete using Server-Sent Events (SSE), ensuring instant feedback and progress updates.
+*   **Intelligent AI Retry Mechanism:** Resilient mapping logic that handles rate-limiting (429) or transient errors (5xx) from the Groq API by parsing `Retry-After` headers and retrying up to 3 times with exponential backoff.
 *   **Virtualized Datatable:** Employs efficient rendering to support thousands of preview rows without lagging the UI.
 *   **Persistent Theme Manager:** Support for beautiful persistent Light and Dark modes.
 *   **Download Option:** Easily export the final mapped, AI-extracted leads back as a clean, standardized CSV.

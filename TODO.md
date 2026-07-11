@@ -77,7 +77,7 @@ This document lists the feature-wise implementation checklist, divided strictly 
 
 ## 2. Backend & AI Enhancements (Bonus)
 - [x] **Streaming / Incremental Parsing**: Stream batches from server to client as they complete.
-- [ ] **AI Retry Mechanism**: Implement exponential backoff or simple retries for failed AI batch API requests.
+- [x] **AI Retry Mechanism**: Implement exponential backoff or simple retries for failed AI batch API requests.
 - [ ] **Unit Tests**:
   - Write test suites for CSV parsing.
   - Test suites for prompt extraction validation and mapping.
@@ -85,5 +85,5 @@ This document lists the feature-wise implementation checklist, divided strictly 
 
 ## 3. Infrastructure & Deployment (Bonus)
 - [x] **Docker Setup**: Add `Dockerfile` and `docker-compose.yml` to run the app seamlessly in containerized environments.
-- [ ] **Cloud Deployment**: Set up scripts or configurations to deploy the frontend (Vercel) and backend (Railway/Render).
+- [x] **Cloud Deployment**: Set up scripts or configurations to deploy the frontend (Vercel) and backend (Railway/Render).
 - [x] **Comprehensive README**: Detail step-by-step instructions on how to install, configure, test, and run the app.
