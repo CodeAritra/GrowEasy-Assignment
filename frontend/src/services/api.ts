@@ -83,16 +83,28 @@ export async function fetchLeads(): Promise<TargetLead[]> {
  */
 export async function importConfirm(
   records: RawRecord[],
-  onProgress?: (message: StreamMessage) => void
+  onProgress?: (message: StreamMessage) => void,
+  signal?: AbortSignal
 ): Promise<ImportConfirmResponse> {
-  let resolvePromise: (value: ImportConfirmResponse) => void;
-  let rejectPromise: (reason: unknown) => void;
+  let resolvePromise!: (value: ImportConfirmResponse) => void;
+  let rejectPromise!: (reason: unknown) => void;
   const resultPromise = new Promise<ImportConfirmResponse>((resolve, reject) => {
     resolvePromise = resolve;
     rejectPromise = reject;
   });
 
   const ctrl = new AbortController();
+
+  if (signal) {
+    if (signal.aborted) {
+      rejectPromise(new Error("Import aborted."));
+      return resultPromise;
+    }
+    signal.addEventListener("abort", () => {
+      ctrl.abort();
+      rejectPromise(new Error("Import aborted."));
+    });
+  }
 
   fetchEventSource(`${API_BASE_URL}/import-confirm`, {
     method: "POST",

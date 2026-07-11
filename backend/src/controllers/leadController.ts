@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import { AIService } from "../services/aiService";
+import { MockAIService } from "../services/mockAIService";
 import { TargetLead } from "../types/interface";
 import { LeadService } from "../services/leadService";
 import { AppError } from "../utils/AppError";
@@ -54,10 +55,11 @@ export class LeadController {
       // Process records in batches
       for (let i: number = 0; i < rawRecords.length; i += batchSize) {
         const batch: Record<string, string>[] = rawRecords.slice(i, i + batchSize);
-        
+
         try {
           // Run AI mapping
-          const mappedBatch: TargetLead[] = await AIService.mapBatch(batch, (attempt, maxAttempts, errorMsg, delayMs) => {
+          const service = MockAIService.MOCK_ERROR_TYPE !== "none" ? MockAIService : AIService;
+          const mappedBatch: TargetLead[] = await service.mapBatch(batch, (attempt: number, maxAttempts: number, errorMsg: string, delayMs: number) => {
             const retryUpdate = {
               type: "retry",
               batchIndex: Math.floor(i / batchSize) + 1,
@@ -69,11 +71,11 @@ export class LeadController {
             };
             res.write(`data: ${JSON.stringify(retryUpdate)}\n\n`);
           });
-          
+
           for (const lead of mappedBatch) {
             const hasEmail: boolean = typeof lead.email === "string" && lead.email.trim().length > 0;
             const hasMobile: boolean = typeof lead.mobile_without_country_code === "string" && lead.mobile_without_country_code.trim().length > 0;
-            
+
             if (hasEmail || hasMobile) {
               await LeadService.saveLead(lead);
               importedLeads.push(lead);

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import Papa from "papaparse";
 import type { RawRecord, ImportConfirmResponse, ImportProgress } from "@/types/interface";
 import { uploadCSV, importConfirm, ApiError } from "@/services/api";
@@ -15,6 +15,30 @@ export type WizardStep = "upload" | "preview" | "importing" | "results";
 function cleanRetryReason(errorMsg: string): string {
   if (!errorMsg) return "";
 
+  const lowerMsg = errorMsg.toLowerCase();
+
+  // 1. Bad gateway check (contains 502 or "bad gateway")
+  if (errorMsg.includes("502") || lowerMsg.includes("bad gateway")) {
+    return "Bad gateway";
+  }
+
+  // 2. Network error check
+  if (lowerMsg.includes("network error") || lowerMsg.includes("fetch failed")) {
+    return "Fetch failed due to network error";
+  }
+
+  // 3. JSON/parsing error check
+  if (
+    lowerMsg.includes("json parse error") ||
+    lowerMsg.includes("parsing error") ||
+    lowerMsg.includes("parse error") ||
+    lowerMsg.includes("invalid json")
+  ) {
+    return "Error in parsing";
+  }
+
+  // 4. Rate limiting: "rate limiting the error is fine dont change it"
+  // Try to extract the raw error message from Groq JSON if present, otherwise return errorMsg.
   if (errorMsg.includes("Groq API error")) {
     try {
       const jsonStart = errorMsg.indexOf("{");
@@ -32,17 +56,6 @@ function cleanRetryReason(errorMsg: string): string {
     } catch {
       // ignore JSON parse fallback
     }
-
-    if (errorMsg.includes("(429)")) {
-      return "Rate limit exceeded. Too many requests.";
-    }
-  }
-
-  if (errorMsg.startsWith("Network error: ")) {
-    return errorMsg.substring("Network error: ".length);
-  }
-  if (errorMsg.startsWith("JSON parse error: ")) {
-    return "Invalid AI response structure.";
   }
 
   return errorMsg;
@@ -61,6 +74,7 @@ interface UseCSVImporterReturn {
   handleUpload: (file: File) => Promise<void>;
   handleConfirmImport: () => Promise<void>;
   handleReset: () => void;
+  cancelImport: () => void;
 }
 
 /**
@@ -78,6 +92,20 @@ export function useCSVImporter(): UseCSVImporterReturn {
   const [importProgress, setImportProgress] = useState<ImportProgress | null>(null);
   const [isUploading, setIsUploading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
+
+  /**
+   * Aborts the active import fetch event stream and reverts back to the preview step.
+   */
+  const cancelImport = useCallback((): void => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+    setStep("preview");
+    setImportProgress(null);
+    setError("Import cancelled by user.");
+  }, []);
 
   /**
    * Handles CSV file upload: sends to backend for parsing, then client-side
@@ -153,6 +181,9 @@ export function useCSVImporter(): UseCSVImporterReturn {
       failedCount: 0,
     });
 
+    const ctrl = new AbortController();
+    abortControllerRef.current = ctrl;
+
     try {
       const result: ImportConfirmResponse = await importConfirm(rawRecords, (progressMessage) => {
         if (progressMessage.type === "progress") {
@@ -176,10 +207,13 @@ export function useCSVImporter(): UseCSVImporterReturn {
             };
           });
         }
-      });
+      }, ctrl.signal);
       setImportResult(result);
       setStep("results");
     } catch (err: unknown) {
+      if (ctrl.signal.aborted) {
+        return;
+      }
       setError(
         err instanceof Error
           ? err.message
@@ -187,6 +221,9 @@ export function useCSVImporter(): UseCSVImporterReturn {
       );
       setStep("preview");
     } finally {
+      if (abortControllerRef.current === ctrl) {
+        abortControllerRef.current = null;
+      }
       setImportProgress(null);
     }
   }, [rawRecords]);
@@ -219,5 +256,6 @@ export function useCSVImporter(): UseCSVImporterReturn {
     handleUpload,
     handleConfirmImport,
     handleReset,
+    cancelImport,
   };
 }

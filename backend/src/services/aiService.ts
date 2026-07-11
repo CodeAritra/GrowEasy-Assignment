@@ -4,26 +4,12 @@ export class AIService {
   private static GROQ_API_URL: string = process.env.GROQ_API_URL!;
   private static GROQ_MODEL: string = process.env.GROQ_MODEL!;
 
-  /**
-   * Sends a batch of raw records to Groq to map them to the CRM schema.
-   */
-  public static async mapBatch(
-    rawRecords: Record<string, string>[],
-    onRetry?: (attempt: number, maxAttempts: number, errorMsg: string, delayMs: number) => void
-  ): Promise<TargetLead[]> {
-    const apiKey: string | undefined = process.env.GROQ_API_KEY;
-    if (!apiKey) {
-      throw new Error("GROQ_API_KEY environment variable is not defined.");
-    }
-
-    const model: string = this.GROQ_MODEL;
-
-    const systemPrompt: string = `
+  public static readonly SYSTEM_PROMPT: string = `
 You are an expert CRM data mapping assistant.
 Your task is to take a batch of raw records from a CSV file (with dynamic, messy, or arbitrary headers) and map/clean them into the target GrowEasy CRM Lead schema.
 
 Target GrowEasy CRM Lead Schema:
-1. \`created_at\`: Lead creation date. Must be a clean ISO date string (YYYY-MM-DDTHH:mm:ss.sssZ) or date format parsable by JavaScript's \`new Date()\`. If missing or invalid, default to the current time.
+1. \`created_at\`: Lead creation date. Must be a clean ISO date string (YYYY-MM-DDTHH:mm:ss.sssZ) or date format parsable by JavaScript's \`new Date()\` or similar formats. If missing or invalid, default to the current time.
 2. \`name\`: Lead full name.
 3. \`email\`: Primary email address. If multiple emails exist, extract the first one here, and append the remaining emails to \`crm_note\`.
 4. \`country_code\`: The country code (e.g., "+91", "+1"). Clean it to start with "+". If missing, default to "+91" if the country is India or the mobile length is 10 digits without code, otherwise infer from the country.
@@ -58,6 +44,19 @@ Formatting Rules:
 - If a record has neither email nor mobile, output it anyway with empty fields.
 `;
 
+  /**
+   * Sends a batch of raw records to Groq to map them to the CRM schema.
+   */
+  public static async mapBatch(
+    rawRecords: Record<string, string>[],
+    onRetry?: (attempt: number, maxAttempts: number, errorMsg: string, delayMs: number) => void
+  ): Promise<TargetLead[]> {
+    const apiKey: string | undefined = process.env.GROQ_API_KEY;
+    if (!apiKey) {
+      throw new Error("GROQ_API_KEY environment variable is not defined.");
+    }
+
+    const model: string = this.GROQ_MODEL;
     const userContent: string = JSON.stringify(rawRecords);
 
     const maxAttempts = 4; // 1 initial attempt + 3 retries
@@ -74,7 +73,7 @@ Formatting Rules:
           body: JSON.stringify({
             model,
             messages: [
-              { role: "system", content: systemPrompt },
+              { role: "system", content: this.SYSTEM_PROMPT },
               { role: "user", content: userContent }
             ],
             response_format: { type: "json_object" },

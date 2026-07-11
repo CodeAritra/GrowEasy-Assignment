@@ -136,7 +136,7 @@ function ImportingStep({ importProgress }: ImportingStepProps): React.JSX.Elemen
               {importProgress.retryMessage && (
                 <div className="mt-4 flex flex-col gap-1.5 p-3.5 bg-amber-500/10 border border-amber-500/20 text-amber-500 rounded-xl text-xs w-full">
                   {importProgress.retryReason && (
-                    <div className="font-semibold text-left break-words line-clamp-3 opacity-90">
+                    <div className="font-semibold text-left wrap-break-word line-clamp-3 opacity-90">
                       Reason: {importProgress.retryReason}
                     </div>
                   )}
@@ -396,6 +396,7 @@ export function ImportModal({
     handleUpload,
     handleConfirmImport,
     handleReset,
+    cancelImport,
   } = useCSVImporter();
 
   // Active tab for results filtering: "imported" | "skipped" | "failed"
@@ -589,8 +590,15 @@ export function ImportModal({
           )}
 
           {step === "importing" && (
-            <div className="w-full text-center text-sm text-muted-foreground">
-              Please wait while AI processes your data...
+            <div className="flex w-full justify-between items-center text-sm text-muted-foreground">
+              <span>Please wait while AI processes your data...</span>
+              <button
+                type="button"
+                onClick={cancelImport}
+                className="flex items-center gap-2 rounded-lg border border-red-500/20 bg-red-500/10 text-red-500 hover:bg-red-500/20 px-4 py-2 font-medium transition-colors cursor-pointer"
+              >
+                Cancel Import
+              </button>
             </div>
           )}
 
