@@ -100,10 +100,22 @@ export interface StreamRetryMessage {
 /** Union of all possible stream messages */
 export type StreamMessage = StreamProgressMessage | StreamSummaryMessage | StreamRetryMessage;
 
+/** Status of a single batch during import */
+export type BatchStatus = "pending" | "processing" | "completed" | "failed" | "retrying";
+
+/** Per-batch tracking info */
+export interface BatchInfo {
+  status: BatchStatus;
+  retryReason?: string;
+  retryAttempt?: number;
+  retryMaxAttempts?: number;
+}
+
 /** Frontend progress state tracking */
 export interface ImportProgress {
   currentBatch: number;
   totalBatches: number;
+  totalRows: number;
   percentage: number;
   importedCount: number;
   skippedCount: number;
@@ -112,4 +124,5 @@ export interface ImportProgress {
   retryMaxAttempts?: number;
   retryMessage?: string;
   retryReason?: string;
+  batchStatuses: BatchInfo[];
 }

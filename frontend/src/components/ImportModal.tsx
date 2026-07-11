@@ -1,13 +1,13 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
-import { X, CheckCircle2, AlertCircle, Upload, Sparkles, Loader2, FileSpreadsheet } from "lucide-react";
+import { X, CheckCircle2, AlertCircle, Upload, Sparkles, Loader2, FileSpreadsheet, Clock, XCircle, RotateCw } from "lucide-react";
 import { useCSVImporter } from "@/hooks/useCSVImporter";
 import { FileUpload } from "@/components/FileUpload";
 import { DataTable } from "@/components/DataTable";
 import { ExportCSVButton } from "@/components/ExportCSVButton";
 import { cn, formatISTDate } from "@/lib/utils";
-import type { TargetLead, ImportProgress, ImportConfirmResponse, RawRecord } from "@/types/interface";
+import type { TargetLead, ImportProgress, ImportConfirmResponse, RawRecord, BatchInfo } from "@/types/interface";
 import { StatusBadge } from "@/components/StatusBadge";
 import { LeadDetailsDrawer } from "@/components/LeadDetailsDrawer";
 
@@ -51,6 +51,13 @@ function ImportPreviewStep({
 }: ImportPreviewStepProps): React.JSX.Element {
   return (
     <div className="space-y-4">
+      {/* erorr */}
+      {error && (
+        <div className="flex items-start gap-3 rounded-lg border border-destructive/30 bg-destructive/10 p-4">
+          <AlertCircle className="mt-0.5 size-5 shrink-0 text-destructive" />
+          <p className="text-sm text-destructive">{error}</p>
+        </div>
+      )}
       {/* File card */}
       {fileName && (
         <div className="flex items-center gap-3 rounded-xl border border-border bg-card/60 px-4 py-3">
@@ -82,93 +89,175 @@ function ImportPreviewStep({
         columns={previewColumns}
         maxHeight={340}
       />
-
-      {error && (
-        <div className="flex items-start gap-3 rounded-lg border border-destructive/30 bg-destructive/10 p-4">
-          <AlertCircle className="mt-0.5 size-5 shrink-0 text-destructive" />
-          <p className="text-sm text-destructive">{error}</p>
-        </div>
-      )}
     </div>
   );
 }
 
 /**
+ * Returns the icon, label, and color classes for a given batch status.
+ */
+function getBatchStatusDisplay(batch: BatchInfo): {
+  icon: React.ReactNode;
+  label: string;
+  textClass: string;
+  bgClass: string;
+  borderClass: string;
+} {
+  switch (batch.status) {
+    case "completed":
+      return {
+        icon: <CheckCircle2 className="size-3.5" />,
+        label: "Completed",
+        textClass: "text-emerald-400",
+        bgClass: "bg-emerald-500/10",
+        borderClass: "border-emerald-500/20",
+      };
+    case "processing":
+      return {
+        icon: <Loader2 className="size-3.5 animate-spin" />,
+        label: "Processing",
+        textClass: "text-primary",
+        bgClass: "bg-primary/10",
+        borderClass: "border-primary/20",
+      };
+    case "retrying":
+      return {
+        icon: <RotateCw className="size-3.5 animate-spin" />,
+        label: batch.retryAttempt && batch.retryMaxAttempts
+          ? `Retrying ${batch.retryAttempt}/${batch.retryMaxAttempts - 1}`
+          : "Retrying",
+        textClass: "text-amber-400",
+        bgClass: "bg-amber-500/10",
+        borderClass: "border-amber-500/20",
+      };
+    case "failed":
+      return {
+        icon: <XCircle className="size-3.5" />,
+        label: "Failed",
+        textClass: "text-red-400",
+        bgClass: "bg-red-500/10",
+        borderClass: "border-red-500/20",
+      };
+    case "pending":
+    default:
+      return {
+        icon: <Clock className="size-3.5 opacity-50" />,
+        label: "Pending",
+        textClass: "text-muted-foreground",
+        bgClass: "bg-muted/30",
+        borderClass: "border-border",
+      };
+  }
+}
+
+/**
  * Sub-component for rendering the progress indicator during AI import mapping.
+ * Shows individual batch rows with live status badges.
  */
 function ImportingStep({ importProgress }: ImportingStepProps): React.JSX.Element {
   return (
-    <div className="flex items-center justify-center min-h-[300px]">
-      <div className="flex flex-col items-center gap-6 max-w-sm w-full">
+    <div className="flex flex-col gap-6 min-h-[300px]">
+      {/* Header */}
+      <div className="flex flex-col items-center gap-3">
         <div className="relative">
-          <div className="flex size-16 items-center justify-center rounded-full bg-primary/10 animate-pulse">
-            <Sparkles className="size-8 text-primary" />
+          <div className="flex size-14 items-center justify-center rounded-full bg-primary/10 animate-pulse">
+            <Sparkles className="size-7 text-primary" />
           </div>
           {(!importProgress || importProgress.totalBatches === 0) && (
-            <Loader2 className="absolute -top-1 -right-1 size-6 animate-spin text-primary" />
+            <Loader2 className="absolute -top-1 -right-1 size-5 animate-spin text-primary" />
           )}
         </div>
-        <div className="text-center w-full">
+        <div className="text-center">
           <h3 className="text-lg font-semibold text-foreground">
             Processing with AI
           </h3>
           {importProgress && importProgress.totalBatches > 0 ? (
-            <>
-              <p className="mt-2 text-sm text-muted-foreground">
-                Processing batch {importProgress.currentBatch} of{" "}
-                {importProgress.totalBatches} ({importProgress.percentage}%)
-              </p>
-              <div className="mt-4 grid grid-cols-3 gap-2 text-xs font-mono text-center">
-                <div className="bg-emerald-500/10 text-emerald-400 p-2 rounded-lg border border-emerald-500/20">
-                  <div className="text-base font-bold">{importProgress.importedCount}</div>
-                  <div className="text-[10px] opacity-80 mt-0.5">Imported</div>
-                </div>
-                <div className="bg-amber-500/10 text-amber-400 p-2 rounded-lg border border-amber-500/20">
-                  <div className="text-base font-bold">{importProgress.skippedCount}</div>
-                  <div className="text-[10px] opacity-80 mt-0.5">Skipped</div>
-                </div>
-                <div className="bg-red-500/10 text-red-400 p-2 rounded-lg border border-red-500/20">
-                  <div className="text-base font-bold">{importProgress.failedCount}</div>
-                  <div className="text-[10px] opacity-80 mt-0.5">Failed</div>
-                </div>
-              </div>
-
-              {importProgress.retryMessage && (
-                <div className="mt-4 flex flex-col gap-1.5 p-3.5 bg-amber-500/10 border border-amber-500/20 text-amber-500 rounded-xl text-xs w-full">
-                  {importProgress.retryReason && (
-                    <div className="font-semibold text-left wrap-break-word line-clamp-3 opacity-90">
-                      Reason: {importProgress.retryReason}
-                    </div>
-                  )}
-                  <div className="flex items-center gap-2 justify-center border-t border-amber-500/10 pt-2 mt-1">
-                    <Loader2 className="size-3.5 animate-spin text-amber-500 shrink-0" />
-                    <span className="font-medium">{importProgress.retryMessage}</span>
-                  </div>
-                </div>
-              )}
-            </>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {importProgress.percentage}% complete · Processing {importProgress.currentBatch} of {importProgress.totalBatches} batches
+            </p>
           ) : (
-            <>
-              <p className="mt-2 text-sm text-muted-foreground">
-                Mapping and extracting your leads using Groq AI...
-              </p>
-              <p className="mt-1 text-xs text-muted-foreground/60 animate-pulse">
-                This may take a moment depending on the file size.
-              </p>
-            </>
-          )}
-        </div>
-        <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
-          {importProgress && importProgress.totalBatches > 0 ? (
-            <div
-              className="h-full rounded-full bg-primary transition-all duration-300"
-              style={{ width: `${importProgress.percentage}%` }}
-            />
-          ) : (
-            <div className="h-full animate-pulse rounded-full bg-primary" style={{ width: "60%" }} />
+            <p className="mt-1 text-sm text-muted-foreground animate-pulse">
+              Preparing batches...
+            </p>
           )}
         </div>
       </div>
+
+      {/* Progress Bar */}
+      <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+        {importProgress && importProgress.totalBatches > 0 ? (
+          <div
+            className="h-full rounded-full bg-primary transition-all duration-500"
+            style={{ width: `${importProgress.percentage}%` }}
+          />
+        ) : (
+          <div className="h-full animate-pulse rounded-full bg-primary" style={{ width: "30%" }} />
+        )}
+      </div>
+
+      {/* Batch Rows */}
+      {importProgress && importProgress?.batchStatuses?.length > 0 && (
+        <div className="flex flex-col gap-2">
+          {importProgress.batchStatuses.map((batch, index) => {
+            const display = getBatchStatusDisplay(batch);
+            return (
+              <div key={index}>
+                <div
+                  className={cn(
+                    "flex items-center justify-between rounded-xl border px-4 py-3 transition-all duration-300",
+                    display.bgClass,
+                    display.borderClass,
+                    batch.status === "processing" && "ring-1 ring-primary/30",
+                    batch.status === "retrying" && "ring-1 ring-amber-500/30"
+                  )}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className={cn("flex size-8 shrink-0 items-center justify-center rounded-lg", display.bgClass)}>
+                      <span className="text-xs font-bold text-foreground">{index + 1}</span>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-foreground">
+                        Batch {index + 1}
+                      </p>
+                      <p className="text-[11px] text-muted-foreground">
+                        Rows {index * 15 + 1}–{Math.min((index + 1) * 15, importProgress.totalRows)}
+                      </p>
+                    </div>
+                  </div>
+                  <div className={cn("flex items-center gap-1.5 text-xs font-semibold", display.textClass)}>
+                    {display.icon}
+                    <span>{display.label}</span>
+                  </div>
+                </div>
+                {/* Retry reason shown below the batch row */}
+                {batch.status === "retrying" && batch.retryReason && (
+                  <div className="mt-1 ml-4 mr-4 px-3 py-2 rounded-lg bg-amber-500/5 border border-amber-500/10 text-amber-500 text-[11px]">
+                    <span className="font-medium">Reason:</span> {batch.retryReason}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Summary Stats */}
+      {importProgress && importProgress.totalBatches > 0 && (
+        <div className="grid grid-cols-3 gap-2 text-xs font-mono text-center">
+          <div className="bg-emerald-500/10 text-emerald-400 p-2 rounded-lg border border-emerald-500/20">
+            <div className="text-base font-bold">{importProgress.importedCount}</div>
+            <div className="text-[10px] opacity-80 mt-0.5">Imported</div>
+          </div>
+          <div className="bg-amber-500/10 text-amber-400 p-2 rounded-lg border border-amber-500/20">
+            <div className="text-base font-bold">{importProgress.skippedCount}</div>
+            <div className="text-[10px] opacity-80 mt-0.5">Skipped</div>
+          </div>
+          <div className="bg-red-500/10 text-red-400 p-2 rounded-lg border border-red-500/20">
+            <div className="text-base font-bold">{importProgress.failedCount}</div>
+            <div className="text-[10px] opacity-80 mt-0.5">Failed</div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -203,8 +292,8 @@ function ImportResultsStep({
             activeTab === "imported"
               ? importResult.importedLeads
               : activeTab === "skipped"
-              ? importResult.skippedLeads
-              : importResult.failedLeads
+                ? importResult.skippedLeads
+                : importResult.failedLeads
           }
           filename={`${activeTab}_leads_${fileName || "export.csv"}`}
           className="shrink-0"
@@ -473,149 +562,149 @@ export function ImportModal({
         onClick={handleBackdropClick}
         className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-fade-in"
       >
-      <div
-        className={cn(
-          "relative flex flex-col bg-card rounded-2xl shadow-2xl border border-border",
-          "w-[95vw] max-w-4xl max-h-[90vh]",
-          "animate-slide-up"
-        )}
-      >
-        {/* Modal Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-border shrink-0">
-          <div>
-            <h2 className="text-lg font-bold text-foreground">
-              Import Leads via CSV
-            </h2>
-            <p className="text-sm text-muted-foreground">
-              {step === "upload" &&
-                "Upload a CSV file to bulk import leads into your system."}
-              {step === "preview" &&
-                `Preview: ${rawRecords.length} rows · ${headers.length} columns`}
-              {step === "importing" &&
-                "AI is mapping your data to the GrowEasy CRM format..."}
-              {step === "results" && "Import completed successfully."}
-            </p>
-          </div>
-          {step !== "importing" && (
-            <button
-              type="button"
-              onClick={() => {
-                onClose();
-                handleReset();
-              }}
-              className="flex items-center justify-center size-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors cursor-pointer"
-              aria-label="Close modal"
-            >
-              <X className="size-5" />
-            </button>
+        <div
+          className={cn(
+            "relative flex flex-col bg-card rounded-2xl shadow-2xl border border-border",
+            "w-[95vw] max-w-4xl max-h-[90vh]",
+            "animate-slide-up"
           )}
-        </div>
-
-        {/* Modal Body */}
-        <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
-          {/* Upload Step */}
-          {step === "upload" && (
-            <FileUpload
-              onUpload={handleUpload}
-              isUploading={isUploading}
-              error={error}
-            />
-          )}
-
-          {/* Preview Step */}
-          {step === "preview" && (
-            <ImportPreviewStep
-              fileName={fileName}
-              fileSize={fileSize}
-              rawRecords={rawRecords}
-              previewColumns={previewColumns}
-              error={error}
-              handleReset={handleReset}
-            />
-          )}
-
-          {/* Importing Step */}
-          {step === "importing" && (
-            <ImportingStep importProgress={importProgress} />
-          )}
-
-          {/* Results Step */}
-          {step === "results" && importResult && (
-            <ImportResultsStep
-              importResult={importResult}
-              fileName={fileName}
-              activeTab={activeTab}
-              setActiveTab={setActiveTab}
-              onRowClick={setSelectedLead}
-            />
-          )}
-        </div>
-
-        {/* Modal Footer */}
-        <div className="flex items-center justify-between px-6 py-4 border-t border-border shrink-0">
-          {step === "upload" && (
-            <div className="flex w-full justify-end">
+        >
+          {/* Modal Header */}
+          <div className="flex items-center justify-between px-6 py-4 border-b border-border shrink-0">
+            <div>
+              <h2 className="text-lg font-bold text-foreground">
+                Import Leads via CSV
+              </h2>
+              <p className="text-sm text-muted-foreground">
+                {step === "upload" &&
+                  "Upload a CSV file to bulk import leads into your system."}
+                {step === "preview" &&
+                  `Preview: ${rawRecords.length} rows · ${headers.length} columns`}
+                {step === "importing" &&
+                  "AI is mapping your data to the GrowEasy CRM format..."}
+                {step === "results" && "Import completed successfully."}
+              </p>
+            </div>
+            {step !== "importing" && (
               <button
                 type="button"
                 onClick={() => {
                   onClose();
                   handleReset();
                 }}
-                className="flex items-center gap-2 rounded-lg border border-border px-5 py-2.5 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-foreground transition-colors cursor-pointer"
+                className="flex items-center justify-center size-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors cursor-pointer"
+                aria-label="Close modal"
               >
-                Cancel
+                <X className="size-5" />
               </button>
-            </div>
-          )}
+            )}
+          </div>
 
-          {step === "preview" && (
-            <>
-              <button
-                type="button"
-                onClick={handleReset}
-                className="flex items-center gap-2 rounded-lg border border-border px-5 py-2.5 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-foreground transition-colors cursor-pointer"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleConfirmImport}
-                id="confirm-import-btn"
-                className="flex items-center gap-2 rounded-lg bg-primary px-6 py-2.5 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-all duration-200 hover:shadow-lg hover:shadow-primary/20 cursor-pointer"
-              >
-                <Upload className="size-4" />
-                Confirm Import
-              </button>
-            </>
-          )}
+          {/* Modal Body */}
+          <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
+            {/* Upload Step */}
+            {step === "upload" && (
+              <FileUpload
+                onUpload={handleUpload}
+                isUploading={isUploading}
+                error={error}
+              />
+            )}
 
-          {step === "importing" && (
-            <div className="flex w-full justify-between items-center text-sm text-muted-foreground">
-              <span>Please wait while AI processes your data...</span>
-              <button
-                type="button"
-                onClick={cancelImport}
-                className="flex items-center gap-2 rounded-lg border border-red-500/20 bg-red-500/10 text-red-500 hover:bg-red-500/20 px-4 py-2 font-medium transition-colors cursor-pointer"
-              >
-                Cancel Import
-              </button>
-            </div>
-          )}
+            {/* Preview Step */}
+            {step === "preview" && (
+              <ImportPreviewStep
+                fileName={fileName}
+                fileSize={fileSize}
+                rawRecords={rawRecords}
+                previewColumns={previewColumns}
+                error={error}
+                handleReset={handleReset}
+              />
+            )}
 
-          {step === "results" && (
-            <div className="flex w-full justify-end">
-              <button
-                type="button"
-                onClick={handleCloseAndRefresh}
-                className="flex items-center gap-2 rounded-lg bg-primary px-6 py-2.5 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-all duration-200 cursor-pointer"
-              >
-                <CheckCircle2 className="size-4" />
-                View Leads
-              </button>
-            </div>
-          )}
+            {/* Importing Step */}
+            {step === "importing" && (
+              <ImportingStep importProgress={importProgress} />
+            )}
+
+            {/* Results Step */}
+            {step === "results" && importResult && (
+              <ImportResultsStep
+                importResult={importResult}
+                fileName={fileName}
+                activeTab={activeTab}
+                setActiveTab={setActiveTab}
+                onRowClick={setSelectedLead}
+              />
+            )}
+          </div>
+
+          {/* Modal Footer */}
+          <div className="flex items-center justify-between px-6 py-4 border-t border-border shrink-0">
+            {step === "upload" && (
+              <div className="flex w-full justify-end">
+                <button
+                  type="button"
+                  onClick={() => {
+                    onClose();
+                    handleReset();
+                  }}
+                  className="flex items-center gap-2 rounded-lg border border-border px-5 py-2.5 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-foreground transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+              </div>
+            )}
+
+            {step === "preview" && (
+              <>
+                <button
+                  type="button"
+                  onClick={handleReset}
+                  className="flex items-center gap-2 rounded-lg border border-border px-5 py-2.5 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-foreground transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmImport}
+                  id="confirm-import-btn"
+                  className="flex items-center gap-2 rounded-lg bg-primary px-6 py-2.5 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-all duration-200 hover:shadow-lg hover:shadow-primary/20 cursor-pointer"
+                >
+                  <Upload className="size-4" />
+                  Confirm Import
+                </button>
+              </>
+            )}
+
+            {step === "importing" && (
+              <div className="flex w-full justify-between items-center text-sm text-muted-foreground">
+                <span>Please wait while AI processes your data...</span>
+                <button
+                  type="button"
+                  onClick={cancelImport}
+                  className="flex items-center gap-2 rounded-lg border border-red-500/20 bg-red-500/10 text-red-500 hover:bg-red-500/20 px-4 py-2 font-medium transition-colors cursor-pointer"
+                >
+                  Cancel Import
+                </button>
+              </div>
+            )}
+
+            {step === "results" && (
+              <div className="flex w-full justify-end">
+                <button
+                  type="button"
+                  onClick={handleCloseAndRefresh}
+                  className="flex items-center gap-2 rounded-lg bg-primary px-6 py-2.5 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-all duration-200 cursor-pointer"
+                >
+                  <CheckCircle2 className="size-4" />
+                  View Leads
+                </button>
+              </div>
+            )}
+          </div>
         </div>
-      </div>
       </div>
       <LeadDetailsDrawer lead={selectedLead} onClose={() => setSelectedLead(null)} />
     </>

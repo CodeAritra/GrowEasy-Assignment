@@ -54,6 +54,20 @@ export class LeadController {
 
       // Process records in batches
       for (let i: number = 0; i < rawRecords.length; i += batchSize) {
+        const batchIndex = Math.floor(i / batchSize) + 1;
+        const totalBatches = Math.ceil(rawRecords.length / batchSize);
+
+        // Stream initial progress update for this batch before processing starts
+        const startUpdate = {
+          type: "progress",
+          batchIndex,
+          totalBatches,
+          importedCount: successCount,
+          skippedCount,
+          failedCount
+        };
+        res.write(`data: ${JSON.stringify(startUpdate)}\n\n`);
+
         const batch: Record<string, string>[] = rawRecords.slice(i, i + batchSize);
 
         try {

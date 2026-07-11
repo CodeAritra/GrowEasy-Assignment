@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useRef } from "react";
 import Papa from "papaparse";
-import type { RawRecord, ImportConfirmResponse, ImportProgress } from "@/types/interface";
+import type { RawRecord, ImportConfirmResponse, ImportProgress, BatchInfo } from "@/types/interface";
 import { uploadCSV, importConfirm, ApiError } from "@/services/api";
 
 /** Possible steps in the wizard flow */
@@ -172,13 +172,21 @@ export function useCSVImporter(): UseCSVImporterReturn {
   const handleConfirmImport = useCallback(async (): Promise<void> => {
     setStep("importing");
     setError(null);
+
+    const totalBatches = Math.ceil(rawRecords.length / 15);
+    const initialBatchStatuses: BatchInfo[] = Array.from({ length: totalBatches }, () => ({
+      status: "pending" as const,
+    }));
+
     setImportProgress({
-      currentBatch: 0,
-      totalBatches: Math.ceil(rawRecords.length / 15),
+      currentBatch: 1,
+      totalBatches,
+      totalRows: rawRecords.length,
       percentage: 0,
       importedCount: 0,
       skippedCount: 0,
       failedCount: 0,
+      batchStatuses: initialBatchStatuses,
     });
 
     const ctrl = new AbortController();
@@ -187,33 +195,97 @@ export function useCSVImporter(): UseCSVImporterReturn {
     try {
       const result: ImportConfirmResponse = await importConfirm(rawRecords, (progressMessage) => {
         if (progressMessage.type === "progress") {
-          setImportProgress({
-            currentBatch: progressMessage.batchIndex,
-            totalBatches: progressMessage.totalBatches,
-            percentage: Math.round((progressMessage.batchIndex / progressMessage.totalBatches) * 100),
-            importedCount: progressMessage.importedCount,
-            skippedCount: progressMessage.skippedCount,
-            failedCount: progressMessage.failedCount,
+          setImportProgress((prev) => {
+            if (!prev) return null;
+            const newStatuses = [...prev.batchStatuses];
+            const batchIdx = progressMessage.batchIndex - 1;
+
+            // If this batch was previously processing/retrying and we just got a progress update,
+            // it means the batch is now being processed (or re-processed after retry success)
+            if (batchIdx >= 0 && batchIdx < newStatuses.length) {
+              // Mark previous batches as completed if they were processing
+              for (let j = 0; j < batchIdx; j++) {
+                if (newStatuses[j].status === "processing" || newStatuses[j].status === "retrying") {
+                  newStatuses[j] = { status: "completed" };
+                }
+              }
+              // Mark current batch as processing (clear any retry state)
+              if (newStatuses[batchIdx].status !== "failed") {
+                newStatuses[batchIdx] = { status: "processing" };
+              }
+            }
+
+            return {
+              ...prev,
+              currentBatch: progressMessage.batchIndex,
+              totalBatches: progressMessage.totalBatches,
+              percentage: Math.round(((progressMessage.batchIndex - 1) / progressMessage.totalBatches) * 100),
+              importedCount: progressMessage.importedCount,
+              skippedCount: progressMessage.skippedCount,
+              failedCount: progressMessage.failedCount,
+              retryMessage: undefined,
+              retryReason: undefined,
+              retryAttempt: undefined,
+              retryMaxAttempts: undefined,
+              batchStatuses: newStatuses,
+            };
           });
         } else if (progressMessage.type === "retry") {
           setImportProgress((prev) => {
             if (!prev) return null;
+            const newStatuses = [...prev.batchStatuses];
+            const batchIdx = progressMessage.batchIndex - 1;
+
+            if (batchIdx >= 0 && batchIdx < newStatuses.length) {
+              newStatuses[batchIdx] = {
+                status: "retrying",
+                retryReason: cleanRetryReason(progressMessage.errorMsg),
+                retryAttempt: progressMessage.attempt,
+                retryMaxAttempts: progressMessage.maxAttempts,
+              };
+            }
+
             return {
               ...prev,
               retryAttempt: progressMessage.attempt,
               retryMaxAttempts: progressMessage.maxAttempts,
               retryMessage: `Retrying attempt ${progressMessage.attempt} of ${progressMessage.maxAttempts - 1}`,
               retryReason: cleanRetryReason(progressMessage.errorMsg),
+              batchStatuses: newStatuses,
             };
           });
         }
       }, ctrl.signal);
+
+      // Mark all remaining processing/pending batches as completed on success
+      setImportProgress((prev) => {
+        if (!prev) return null;
+        const finalStatuses = prev.batchStatuses.map((b) =>
+          b.status === "processing" || b.status === "pending" ? { status: "completed" as const } : b
+        );
+        return { ...prev, percentage: 100, batchStatuses: finalStatuses };
+      });
+
       setImportResult(result);
       setStep("results");
     } catch (err: unknown) {
       if (ctrl.signal.aborted) {
         return;
       }
+
+      // Mark the current batch as failed
+      setImportProgress((prev) => {
+        if (!prev) return null;
+        const newStatuses = [...prev.batchStatuses];
+        const failedIdx = prev.currentBatch - 1;
+        if (failedIdx >= 0 && failedIdx < newStatuses.length) {
+          if (newStatuses[failedIdx].status !== "completed") {
+            newStatuses[failedIdx] = { status: "failed" };
+          }
+        }
+        return { ...prev, batchStatuses: newStatuses };
+      });
+
       setError(
         err instanceof Error
           ? err.message
