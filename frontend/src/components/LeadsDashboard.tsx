@@ -12,6 +12,7 @@ import {
   Loader2,
   AlertCircle,
   RefreshCw,
+  X,
 } from "lucide-react";
 import { useLeads } from "@/hooks/useLeads";
 import { DataTable, type ColumnDefinition } from "@/components/DataTable";
@@ -74,6 +75,7 @@ function StatusBadge({ status }: { status: string }): React.JSX.Element {
 export function LeadsDashboard(): React.JSX.Element {
   const { leads, isLoading, error, refetch } = useLeads();
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
+  const [selectedLead, setSelectedLead] = useState<TargetLead | null>(null);
 
   // Stats computed from leads
   const stats = useMemo(() => {
@@ -103,9 +105,10 @@ export function LeadsDashboard(): React.JSX.Element {
           const code = row.country_code || "";
           const mobile = row.mobile_without_country_code || "";
           if (!mobile) return <span className="text-muted-foreground/50">—</span>;
+          const cleanCode = code.startsWith("+") ? code : `+${code}`;
           return (
             <span className="font-mono text-xs">
-              {code ? `+${code} ` : ""}
+              {code ? `${cleanCode} ` : ""}
               {mobile}
             </span>
           );
@@ -292,7 +295,7 @@ export function LeadsDashboard(): React.JSX.Element {
 
         {/* Leads DataTable */}
         {!isLoading && !error && leads.length > 0 && (
-          <DataTable data={leads} columns={columns} maxHeight={550} />
+          <DataTable data={leads} columns={columns} maxHeight={550} onRowClick={setSelectedLead} />
         )}
       </main>
 
@@ -309,6 +312,114 @@ export function LeadsDashboard(): React.JSX.Element {
         onClose={() => setIsModalOpen(false)}
         onImportComplete={() => void refetch()}
       />
+
+      {/* Lead Details Side Drawer */}
+      {selectedLead && (
+        <div
+          className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm transition-opacity"
+          onClick={() => setSelectedLead(null)}
+        />
+      )}
+      <div
+        className={cn(
+          "fixed right-0 top-0 bottom-0 z-50 w-full max-w-md bg-card border-l border-border p-6 shadow-2xl transition-transform duration-300 ease-in-out transform flex flex-col",
+          selectedLead ? "translate-x-0" : "translate-x-full"
+        )}
+      >
+        {selectedLead && (
+          <>
+            <div className="flex items-center justify-between border-b border-border pb-4">
+              <div>
+                <h3 className="text-lg font-bold text-foreground">{selectedLead.name || "Unnamed Lead"}</h3>
+                <p className="text-xs text-muted-foreground mt-0.5">{selectedLead.company || "No Company"}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedLead(null)}
+                className="rounded-lg p-1.5 hover:bg-accent text-muted-foreground hover:text-foreground cursor-pointer"
+              >
+                <X className="size-5" />
+              </button>
+            </div>
+            
+            <div className="flex-1 overflow-y-auto py-6 space-y-5 custom-scrollbar text-sm">
+              <div>
+                <span className="text-xs text-muted-foreground block mb-1">CRM Status</span>
+                <StatusBadge status={selectedLead.crm_status} />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <span className="text-xs text-muted-foreground block mb-0.5">Email</span>
+                  <p className="font-medium text-foreground select-all break-all">{selectedLead.email || "—"}</p>
+                </div>
+                <div>
+                  <span className="text-xs text-muted-foreground block mb-0.5">Phone</span>
+                  <p className="font-medium text-foreground select-all font-mono">
+                    {selectedLead.mobile_without_country_code 
+                      ? (() => {
+                          const code = selectedLead.country_code || "";
+                          const cleanCode = code.startsWith("+") ? code : `+${code}`;
+                          return `${code ? `${cleanCode} ` : ""}${selectedLead.mobile_without_country_code}`;
+                        })()
+                      : "—"
+                    }
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <span className="text-xs text-muted-foreground block mb-0.5">City</span>
+                  <p className="font-medium text-foreground">{selectedLead.city || "—"}</p>
+                </div>
+                <div>
+                  <span className="text-xs text-muted-foreground block mb-0.5">State</span>
+                  <p className="font-medium text-foreground">{selectedLead.state || "—"}</p>
+                </div>
+                <div>
+                  <span className="text-xs text-muted-foreground block mb-0.5">Country</span>
+                  <p className="font-medium text-foreground">{selectedLead.country || "—"}</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <span className="text-xs text-muted-foreground block mb-0.5">Lead Owner</span>
+                  <p className="font-medium text-foreground break-all">{selectedLead.lead_owner || "—"}</p>
+                </div>
+                <div>
+                  <span className="text-xs text-muted-foreground block mb-0.5">Data Source</span>
+                  <p className="font-medium text-foreground">{selectedLead.data_source || "—"}</p>
+                </div>
+              </div>
+
+              <div>
+                <span className="text-xs text-muted-foreground block mb-0.5">Possession Time</span>
+                <p className="font-medium text-foreground">{selectedLead.possession_time || "—"}</p>
+              </div>
+
+              <div className="border-t border-border/50 pt-4">
+                <span className="text-xs text-muted-foreground block mb-1">Notes / Remarks (crm_note)</span>
+                <div className="rounded-lg bg-accent/20 border border-border/50 p-3 text-xs text-foreground leading-relaxed whitespace-pre-wrap break-words max-h-48 overflow-y-auto custom-scrollbar">
+                  {selectedLead.crm_note || "No custom remarks available."}
+                </div>
+              </div>
+
+              <div>
+                <span className="text-xs text-muted-foreground block mb-0.5">Additional Description</span>
+                <p className="text-foreground leading-relaxed whitespace-pre-wrap break-words">{selectedLead.description || "—"}</p>
+              </div>
+            </div>
+
+            <div className="border-t border-border pt-4 text-center">
+              <span className="text-[10px] text-muted-foreground tracking-wider uppercase block">
+                Created: {formatISTDate(selectedLead.created_at)}
+              </span>
+            </div>
+          </>
+        )}
+      </div>
     </div>
   );
 }

@@ -30,7 +30,8 @@ export function DataTable<T extends Record<string, any>>({
   maxHeight = 450,
   rowHeight = 38,
   bufferCount = 10,
-}: DataTableProps<T>): React.JSX.Element {
+  onRowClick,
+}: DataTableProps<T> & { onRowClick?: (row: T) => void }): React.JSX.Element {
   const containerRef = useRef<HTMLDivElement>(null);
 
   if (data.length === 0) {
@@ -68,7 +69,7 @@ export function DataTable<T extends Record<string, any>>({
 
         {/* Table Body (Virtualized list using react-window) */}
         <List
-          height={maxHeight}
+          height={Math.min(data.length * rowHeight, maxHeight)}
           itemCount={data.length}
           itemSize={rowHeight}
           width="100%"
@@ -80,13 +81,15 @@ export function DataTable<T extends Record<string, any>>({
             return (
               <div
                 style={style}
+                onClick={() => onRowClick?.(row)}
                 className={cn(
                   "flex items-center text-sm border-b border-border/50 transition-colors hover:bg-accent/30",
-                  index % 2 === 0 ? "bg-transparent" : "bg-card/30"
+                  index % 2 === 0 ? "bg-transparent" : "bg-card/30",
+                  onRowClick && "cursor-pointer hover:bg-accent/40"
                 )}
               >
                 {/* Index Column */}
-                <div className="flex-none w-12 h-full px-4 py-2.5 text-xs font-mono text-muted-foreground border-r border-border flex items-center justify-start">
+                <div className="flex-none w-12 h-full px-4 py-2 text-xs font-mono text-muted-foreground border-r border-border flex items-center justify-start">
                   {index + 1}
                 </div>
 
@@ -96,7 +99,7 @@ export function DataTable<T extends Record<string, any>>({
                   return (
                     <div
                       key={`${index}-${String(col.key)}`}
-                      className="flex-1 px-4 py-2.5 max-w-[300px] truncate whitespace-nowrap text-foreground flex items-center"
+                      className="flex-1 px-4 py-2 max-w-[300px] truncate whitespace-nowrap text-foreground flex items-center text-xs h-full"
                       title={String(val !== null && val !== undefined ? val : "")}
                     >
                       {col.render ? (
