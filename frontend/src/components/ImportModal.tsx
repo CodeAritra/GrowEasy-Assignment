@@ -132,6 +132,20 @@ function ImportingStep({ importProgress }: ImportingStepProps): React.JSX.Elemen
                   <div className="text-[10px] opacity-80 mt-0.5">Failed</div>
                 </div>
               </div>
+
+              {importProgress.retryMessage && (
+                <div className="mt-4 flex flex-col gap-1.5 p-3.5 bg-amber-500/10 border border-amber-500/20 text-amber-500 rounded-xl text-xs w-full">
+                  {importProgress.retryReason && (
+                    <div className="font-semibold text-left break-words line-clamp-3 opacity-90">
+                      Reason: {importProgress.retryReason}
+                    </div>
+                  )}
+                  <div className="flex items-center gap-2 justify-center border-t border-amber-500/10 pt-2 mt-1">
+                    <Loader2 className="size-3.5 animate-spin text-amber-500 shrink-0" />
+                    <span className="font-medium">{importProgress.retryMessage}</span>
+                  </div>
+                </div>
+              )}
             </>
           ) : (
             <>

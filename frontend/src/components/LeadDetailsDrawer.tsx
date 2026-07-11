@@ -22,7 +22,7 @@ interface LeadDetailsDrawerProps {
 }
 
 const emptyLead: TargetLead = {
-  created_at: new Date().toISOString(),
+  created_at: "",
   name: "",
   email: "",
   country_code: "",

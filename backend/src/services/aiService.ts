@@ -7,7 +7,10 @@ export class AIService {
   /**
    * Sends a batch of raw records to Groq to map them to the CRM schema.
    */
-  public static async mapBatch(rawRecords: Record<string, string>[]): Promise<TargetLead[]> {
+  public static async mapBatch(
+    rawRecords: Record<string, string>[],
+    onRetry?: (attempt: number, maxAttempts: number, errorMsg: string, delayMs: number) => void
+  ): Promise<TargetLead[]> {
     const apiKey: string | undefined = process.env.GROQ_API_KEY;
     if (!apiKey) {
       throw new Error("GROQ_API_KEY environment variable is not defined.");
@@ -57,44 +60,100 @@ Formatting Rules:
 
     const userContent: string = JSON.stringify(rawRecords);
 
-    const response: Response = await fetch(this.GROQ_API_URL, {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${apiKey}`,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        model,
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userContent }
-        ],
-        response_format: { type: "json_object" },
-        temperature: 0.1
-      })
-    });
+    const maxAttempts = 4; // 1 initial attempt + 3 retries
+    let baseDelay = 1500; // Start with 1.5 seconds delay
 
-    if (!response.ok) {
-      const errorText: string = await response.text();
-      throw new Error(`Groq API error (${response.status}): ${errorText}`);
-    }
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        const response: Response = await fetch(this.GROQ_API_URL, {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${apiKey}`,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            model,
+            messages: [
+              { role: "system", content: systemPrompt },
+              { role: "user", content: userContent }
+            ],
+            response_format: { type: "json_object" },
+            temperature: 0.1
+          })
+        });
 
-    const data: GroqAPIResponse = await response.json() as GroqAPIResponse;
-    const messageContent: string | undefined = data.choices?.[0]?.message?.content;
-    if (!messageContent) {
-      throw new Error("Groq API returned an empty or invalid completion response.");
-    }
+        if (!response.ok) {
+          const errorText: string = await response.text();
+          const status = response.status;
 
-    try {
-      const parsedData: GroqResponse = JSON.parse(messageContent) as GroqResponse;
-      if (!parsedData.leads || !Array.isArray(parsedData.leads)) {
-        throw new Error("Invalid response format: 'leads' array is missing.");
+          // Determine if error is retryable (429 Rate Limit or 5xx Server Error)
+          const isRetryable = status === 429 || status >= 500;
+          const errorMsg = `Groq API error (${status}): ${errorText}`;
+
+          if (isRetryable && attempt < maxAttempts) {
+            let delay = baseDelay * Math.pow(2, attempt - 1) + Math.random() * 300;
+            const retryAfterHeader = response.headers.get("retry-after");
+            if (retryAfterHeader) {
+              const seconds = parseInt(retryAfterHeader, 10);
+              if (!isNaN(seconds)) {
+                delay = Math.max(delay, seconds * 1000);
+              }
+            }
+            console.warn(`[AI Service] Attempt ${attempt}/${maxAttempts} failed: ${errorMsg}. Retrying in ${Math.round(delay)}ms...`);
+            if (onRetry) {
+              onRetry(attempt, maxAttempts, errorMsg, delay);
+            }
+            await new Promise((resolve) => setTimeout(resolve, delay));
+            continue;
+          }
+
+          throw new Error(errorMsg);
+        }
+
+        const data: GroqAPIResponse = await response.json() as GroqAPIResponse;
+        const messageContent: string | undefined = data.choices?.[0]?.message?.content;
+        if (!messageContent) {
+          throw new Error("Groq API returned an empty or invalid completion response.");
+        }
+
+        try {
+          const parsedData: GroqResponse = JSON.parse(messageContent) as GroqResponse;
+          if (!parsedData.leads || !Array.isArray(parsedData.leads)) {
+            throw new Error("Invalid response format: 'leads' array is missing.");
+          }
+          return parsedData.leads;
+        } catch (parseError: unknown) {
+          const parseErrorMsg: string = parseError instanceof Error ? parseError.message : String(parseError);
+          console.error("Error parsing Groq JSON output:", messageContent);
+
+          if (attempt < maxAttempts) {
+            const delay = baseDelay * Math.pow(2, attempt - 1) + Math.random() * 300;
+            console.warn(`[AI Service] JSON parse failed (Attempt ${attempt}/${maxAttempts}): ${parseErrorMsg}. Retrying in ${Math.round(delay)}ms...`);
+            if (onRetry) {
+              onRetry(attempt, maxAttempts, `JSON parse error: ${parseErrorMsg}`, delay);
+            }
+            await new Promise((resolve) => setTimeout(resolve, delay));
+            continue;
+          }
+
+          throw new Error(`Failed to parse AI response: ${parseErrorMsg}`);
+        }
+      } catch (error: any) {
+        // Handle physical network errors or transient fetch issues
+        const isGroqError = error.message && error.message.includes("Groq API error");
+        if (!isGroqError && attempt < maxAttempts) {
+          const delay = baseDelay * Math.pow(2, attempt - 1) + Math.random() * 300;
+          console.warn(`[AI Service] Network error (Attempt ${attempt}/${maxAttempts}): ${error.message}. Retrying in ${Math.round(delay)}ms...`);
+          if (onRetry) {
+            onRetry(attempt, maxAttempts, `Network error: ${error.message}`, delay);
+          }
+          await new Promise((resolve) => setTimeout(resolve, delay));
+          continue;
+        }
+        throw error;
       }
-      return parsedData.leads;
-    } catch (parseError: unknown) {
-      const parseErrorMsg: string = parseError instanceof Error ? parseError.message : String(parseError);
-      console.error("Error parsing Groq JSON output:", messageContent);
-      throw new Error(`Failed to parse AI response: ${parseErrorMsg}`);
     }
+
+    throw new Error("Failed to map batch after all retry attempts.");
   }
 }

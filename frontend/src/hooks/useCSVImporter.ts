@@ -8,6 +8,46 @@ import { uploadCSV, importConfirm, ApiError } from "@/services/api";
 /** Possible steps in the wizard flow */
 export type WizardStep = "upload" | "preview" | "importing" | "results";
 
+/**
+ * Clean up verbose rate limit error messages from the AI completion response.
+ * Extracts the user-friendly reset timer if available, otherwise simplifies the error.
+ */
+function cleanRetryReason(errorMsg: string): string {
+  if (!errorMsg) return "";
+
+  if (errorMsg.includes("Groq API error")) {
+    try {
+      const jsonStart = errorMsg.indexOf("{");
+      if (jsonStart !== -1) {
+        const jsonStr = errorMsg.substring(jsonStart);
+        const parsed = JSON.parse(jsonStr);
+        if (parsed.error && typeof parsed.error.message === "string") {
+          const msg = parsed.error.message;
+          if (parsed.error.code === "rate_limit_exceeded") {
+            return "Rate limit exceeded. Too many requests.";
+          }
+          return msg;
+        }
+      }
+    } catch {
+      // ignore JSON parse fallback
+    }
+
+    if (errorMsg.includes("(429)")) {
+      return "Rate limit exceeded. Too many requests.";
+    }
+  }
+
+  if (errorMsg.startsWith("Network error: ")) {
+    return errorMsg.substring("Network error: ".length);
+  }
+  if (errorMsg.startsWith("JSON parse error: ")) {
+    return "Invalid AI response structure.";
+  }
+
+  return errorMsg;
+}
+
 interface UseCSVImporterReturn {
   step: WizardStep;
   rawRecords: RawRecord[];
@@ -123,6 +163,17 @@ export function useCSVImporter(): UseCSVImporterReturn {
             importedCount: progressMessage.importedCount,
             skippedCount: progressMessage.skippedCount,
             failedCount: progressMessage.failedCount,
+          });
+        } else if (progressMessage.type === "retry") {
+          setImportProgress((prev) => {
+            if (!prev) return null;
+            return {
+              ...prev,
+              retryAttempt: progressMessage.attempt,
+              retryMaxAttempts: progressMessage.maxAttempts,
+              retryMessage: `Retrying attempt ${progressMessage.attempt} of ${progressMessage.maxAttempts - 1}`,
+              retryReason: cleanRetryReason(progressMessage.errorMsg),
+            };
           });
         }
       });

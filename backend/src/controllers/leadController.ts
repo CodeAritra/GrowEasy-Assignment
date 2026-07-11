@@ -57,7 +57,18 @@ export class LeadController {
         
         try {
           // Run AI mapping
-          const mappedBatch: TargetLead[] = await AIService.mapBatch(batch);
+          const mappedBatch: TargetLead[] = await AIService.mapBatch(batch, (attempt, maxAttempts, errorMsg, delayMs) => {
+            const retryUpdate = {
+              type: "retry",
+              batchIndex: Math.floor(i / batchSize) + 1,
+              totalBatches: Math.ceil(rawRecords.length / batchSize),
+              attempt,
+              maxAttempts,
+              errorMsg,
+              delayMs
+            };
+            res.write(`data: ${JSON.stringify(retryUpdate)}\n\n`);
+          });
           
           for (const lead of mappedBatch) {
             const hasEmail: boolean = typeof lead.email === "string" && lead.email.trim().length > 0;

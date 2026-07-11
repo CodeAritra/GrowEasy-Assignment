@@ -86,8 +86,19 @@ export interface StreamSummaryMessage {
   failedLeads: TargetLead[];
 }
 
+/** Retry updates sent by the server during transient failures */
+export interface StreamRetryMessage {
+  type: "retry";
+  batchIndex: number;
+  totalBatches: number;
+  attempt: number;
+  maxAttempts: number;
+  errorMsg: string;
+  delayMs: number;
+}
+
 /** Union of all possible stream messages */
-export type StreamMessage = StreamProgressMessage | StreamSummaryMessage;
+export type StreamMessage = StreamProgressMessage | StreamSummaryMessage | StreamRetryMessage;
 
 /** Frontend progress state tracking */
 export interface ImportProgress {
@@ -97,4 +108,8 @@ export interface ImportProgress {
   importedCount: number;
   skippedCount: number;
   failedCount: number;
+  retryAttempt?: number;
+  retryMaxAttempts?: number;
+  retryMessage?: string;
+  retryReason?: string;
 }

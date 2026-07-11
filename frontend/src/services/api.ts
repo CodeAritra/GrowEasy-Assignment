@@ -121,7 +121,7 @@ export async function importConfirm(
       if (!msg.data) return;
       try {
         const parsed = JSON.parse(msg.data) as StreamMessage;
-        if (parsed.type === "progress") {
+        if (parsed.type === "progress" || parsed.type === "retry") {
           if (onProgress) onProgress(parsed);
         } else if (parsed.type === "summary") {
           const finalSummary: ImportConfirmResponse = {
