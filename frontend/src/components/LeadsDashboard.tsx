@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import {
   Sparkles,
   Plus,
@@ -19,54 +19,12 @@ import { DataTable, type ColumnDefinition } from "@/components/DataTable";
 import { ImportModal } from "@/components/ImportModal";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { ExportCSVButton } from "@/components/ExportCSVButton";
+import { StatusBadge } from "@/components/StatusBadge";
+import { LeadDetailsDrawer } from "@/components/LeadDetailsDrawer";
 import type { TargetLead } from "@/types/interface";
 import { cn, formatISTDate } from "@/lib/utils";
 
-const STATUS_CONFIG: Record<string, { label: string; className: string; icon: React.ReactNode }> = {
-  GOOD_LEAD_FOLLOW_UP: {
-    label: "Follow Up",
-    className: "bg-primary/10 text-primary border-primary/30",
-    icon: <CheckCircle2 className="size-3" />,
-  },
-  DID_NOT_CONNECT: {
-    label: "No Connect",
-    className: "bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 border-yellow-500/30",
-    icon: <PhoneOff className="size-3" />,
-  },
-  BAD_LEAD: {
-    label: "Bad Lead",
-    className: "bg-destructive/10 text-destructive border-destructive/30",
-    icon: <XCircle className="size-3" />,
-  },
-  SALE_DONE: {
-    label: "Sale Done",
-    className: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/30",
-    icon: <ShoppingCart className="size-3" />,
-  },
-};
 
-/**
- * Status badge component for CRM status display.
- */
-function StatusBadge({ status }: { status: string }): React.JSX.Element {
-  const c = STATUS_CONFIG[status] || {
-    label: status || "—",
-    className: "bg-muted text-muted-foreground border-border",
-    icon: null,
-  };
-
-  return (
-    <span
-      className={cn(
-        "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium whitespace-nowrap",
-        c.className
-      )}
-    >
-      {c.icon}
-      {c.label}
-    </span>
-  );
-}
 
 /**
  * Main dashboard component that displays all CRM leads and provides
@@ -76,6 +34,8 @@ export function LeadsDashboard(): React.JSX.Element {
   const { leads, isLoading, error, refetch } = useLeads();
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [selectedLead, setSelectedLead] = useState<TargetLead | null>(null);
+
+
 
   // Stats computed from leads
   const stats = useMemo(() => {
@@ -102,13 +62,10 @@ export function LeadsDashboard(): React.JSX.Element {
         key: "mobile_without_country_code",
         label: "Mobile",
         render: (row: TargetLead): React.ReactNode => {
-          const code = row.country_code || "";
           const mobile = row.mobile_without_country_code || "";
           if (!mobile) return <span className="text-muted-foreground/50">—</span>;
-          const cleanCode = code.startsWith("+") ? code : `+${code}`;
           return (
-            <span className="font-mono text-xs">
-              {code ? `${cleanCode} ` : ""}
+            <span className="font-mono text-sm">
               {mobile}
             </span>
           );
@@ -314,112 +271,7 @@ export function LeadsDashboard(): React.JSX.Element {
       />
 
       {/* Lead Details Side Drawer */}
-      {selectedLead && (
-        <div
-          className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm transition-opacity"
-          onClick={() => setSelectedLead(null)}
-        />
-      )}
-      <div
-        className={cn(
-          "fixed right-0 top-0 bottom-0 z-50 w-full max-w-md bg-card border-l border-border p-6 shadow-2xl transition-transform duration-300 ease-in-out transform flex flex-col",
-          selectedLead ? "translate-x-0" : "translate-x-full"
-        )}
-      >
-        {selectedLead && (
-          <>
-            <div className="flex items-center justify-between border-b border-border pb-4">
-              <div>
-                <h3 className="text-lg font-bold text-foreground">{selectedLead.name || "Unnamed Lead"}</h3>
-                <p className="text-xs text-muted-foreground mt-0.5">{selectedLead.company || "No Company"}</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setSelectedLead(null)}
-                className="rounded-lg p-1.5 hover:bg-accent text-muted-foreground hover:text-foreground cursor-pointer"
-              >
-                <X className="size-5" />
-              </button>
-            </div>
-            
-            <div className="flex-1 overflow-y-auto py-6 space-y-5 custom-scrollbar text-sm">
-              <div>
-                <span className="text-xs text-muted-foreground block mb-1">CRM Status</span>
-                <StatusBadge status={selectedLead.crm_status} />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <span className="text-xs text-muted-foreground block mb-0.5">Email</span>
-                  <p className="font-medium text-foreground select-all break-all">{selectedLead.email || "—"}</p>
-                </div>
-                <div>
-                  <span className="text-xs text-muted-foreground block mb-0.5">Phone</span>
-                  <p className="font-medium text-foreground select-all font-mono">
-                    {selectedLead.mobile_without_country_code 
-                      ? (() => {
-                          const code = selectedLead.country_code || "";
-                          const cleanCode = code.startsWith("+") ? code : `+${code}`;
-                          return `${code ? `${cleanCode} ` : ""}${selectedLead.mobile_without_country_code}`;
-                        })()
-                      : "—"
-                    }
-                  </p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-3 gap-4">
-                <div>
-                  <span className="text-xs text-muted-foreground block mb-0.5">City</span>
-                  <p className="font-medium text-foreground">{selectedLead.city || "—"}</p>
-                </div>
-                <div>
-                  <span className="text-xs text-muted-foreground block mb-0.5">State</span>
-                  <p className="font-medium text-foreground">{selectedLead.state || "—"}</p>
-                </div>
-                <div>
-                  <span className="text-xs text-muted-foreground block mb-0.5">Country</span>
-                  <p className="font-medium text-foreground">{selectedLead.country || "—"}</p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <span className="text-xs text-muted-foreground block mb-0.5">Lead Owner</span>
-                  <p className="font-medium text-foreground break-all">{selectedLead.lead_owner || "—"}</p>
-                </div>
-                <div>
-                  <span className="text-xs text-muted-foreground block mb-0.5">Data Source</span>
-                  <p className="font-medium text-foreground">{selectedLead.data_source || "—"}</p>
-                </div>
-              </div>
-
-              <div>
-                <span className="text-xs text-muted-foreground block mb-0.5">Possession Time</span>
-                <p className="font-medium text-foreground">{selectedLead.possession_time || "—"}</p>
-              </div>
-
-              <div className="border-t border-border/50 pt-4">
-                <span className="text-xs text-muted-foreground block mb-1">Notes / Remarks (crm_note)</span>
-                <div className="rounded-lg bg-accent/20 border border-border/50 p-3 text-xs text-foreground leading-relaxed whitespace-pre-wrap break-words max-h-48 overflow-y-auto custom-scrollbar">
-                  {selectedLead.crm_note || "No custom remarks available."}
-                </div>
-              </div>
-
-              <div>
-                <span className="text-xs text-muted-foreground block mb-0.5">Additional Description</span>
-                <p className="text-foreground leading-relaxed whitespace-pre-wrap break-words">{selectedLead.description || "—"}</p>
-              </div>
-            </div>
-
-            <div className="border-t border-border pt-4 text-center">
-              <span className="text-[10px] text-muted-foreground tracking-wider uppercase block">
-                Created: {formatISTDate(selectedLead.created_at)}
-              </span>
-            </div>
-          </>
-        )}
-      </div>
+      <LeadDetailsDrawer lead={selectedLead} onClose={() => setSelectedLead(null)} />
     </div>
   );
 }

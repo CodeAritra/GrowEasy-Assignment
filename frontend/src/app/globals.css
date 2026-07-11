@@ -36,6 +36,8 @@
   --radius-xl: calc(var(--radius) + 4px);
   --font-sans: var(--font-inter);
   --font-mono: var(--font-inter);
+  --z-60: 60;
+  --z-65: 65;
 }
 
 :root {

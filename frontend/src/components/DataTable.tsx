@@ -28,7 +28,7 @@ export function DataTable<T extends Record<string, any>>({
   data,
   columns,
   maxHeight = 450,
-  rowHeight = 38,
+  rowHeight = 40,
   bufferCount = 10,
   onRowClick,
 }: DataTableProps<T> & { onRowClick?: (row: T) => void }): React.JSX.Element {
@@ -53,7 +53,7 @@ export function DataTable<T extends Record<string, any>>({
     >
       <div style={{ minWidth: `${estimatedMinWidth}px` }} className="w-full">
         {/* Table Header */}
-        <div className="sticky top-0 z-10 flex bg-card border-b border-border font-semibold text-xs text-muted-foreground uppercase tracking-wider select-none">
+        <div className="sticky top-0 z-10 flex bg-card border-b border-border font-bold text-xs text-muted-foreground uppercase tracking-wider select-none">
           <div className="flex-none w-12 px-4 py-3 text-left border-r border-border flex items-center justify-start">
             #
           </div>
@@ -78,18 +78,32 @@ export function DataTable<T extends Record<string, any>>({
         >
           {({ index, style }) => {
             const row = data[index];
+            const rowProps = onRowClick
+              ? {
+                  onClick: () => onRowClick(row),
+                  onKeyDown: (e: React.KeyboardEvent) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      onRowClick(row);
+                    }
+                  },
+                  tabIndex: 0,
+                  role: "button",
+                }
+              : {};
+
             return (
               <div
                 style={style}
-                onClick={() => onRowClick?.(row)}
+                {...rowProps}
                 className={cn(
-                  "flex items-center text-sm border-b border-border/50 transition-colors hover:bg-accent/30",
+                  "flex items-center text-base border-b border-border/50 transition-colors hover:bg-accent/30",
                   index % 2 === 0 ? "bg-transparent" : "bg-card/30",
                   onRowClick && "cursor-pointer hover:bg-accent/40"
                 )}
               >
                 {/* Index Column */}
-                <div className="flex-none w-12 h-full px-4 py-2 text-xs font-mono text-muted-foreground border-r border-border flex items-center justify-start">
+                <div className="flex-none w-12 h-full px-4 py-2 text-sm font-mono text-muted-foreground border-r border-border flex items-center justify-start">
                   {index + 1}
                 </div>
 
@@ -99,7 +113,7 @@ export function DataTable<T extends Record<string, any>>({
                   return (
                     <div
                       key={`${index}-${String(col.key)}`}
-                      className="flex-1 px-4 py-2 max-w-[300px] truncate whitespace-nowrap text-foreground flex items-center text-xs h-full"
+                      className="flex-1 px-4 py-2 max-w-[300px] truncate whitespace-nowrap text-foreground flex items-center text-sm h-full"
                       title={String(val !== null && val !== undefined ? val : "")}
                     >
                       {col.render ? (

@@ -8,6 +8,8 @@ import { DataTable } from "@/components/DataTable";
 import { ExportCSVButton } from "@/components/ExportCSVButton";
 import { cn, formatISTDate } from "@/lib/utils";
 import type { TargetLead, ImportProgress, ImportConfirmResponse, RawRecord } from "@/types/interface";
+import { StatusBadge } from "@/components/StatusBadge";
+import { LeadDetailsDrawer } from "@/components/LeadDetailsDrawer";
 
 interface ImportModalProps {
   isOpen: boolean;
@@ -33,6 +35,7 @@ interface ImportResultsStepProps {
   fileName: string;
   activeTab: "imported" | "skipped" | "failed";
   setActiveTab: (tab: "imported" | "skipped" | "failed") => void;
+  onRowClick: (lead: TargetLead) => void;
 }
 
 /**
@@ -164,6 +167,7 @@ function ImportResultsStep({
   fileName,
   activeTab,
   setActiveTab,
+  onRowClick,
 }: ImportResultsStepProps): React.JSX.Element {
   return (
     <div className="space-y-4">
@@ -280,13 +284,14 @@ function ImportResultsStep({
               { key: "state", label: "State" },
               { key: "country", label: "Country" },
               { key: "lead_owner", label: "Lead Owner" },
-              { key: "crm_status", label: "Status" },
+              { key: "crm_status", label: "Status", render: (row: TargetLead): React.ReactNode => <StatusBadge status={row.crm_status} /> },
               { key: "crm_note", label: "Notes/Remarks" },
               { key: "data_source", label: "Source" },
               { key: "possession_time", label: "Possession Time" },
               { key: "description", label: "Description" },
             ]}
             maxHeight={300}
+            onRowClick={onRowClick}
           />
         ) : (
           <p className="text-center text-sm text-muted-foreground py-8">No imported leads.</p>
@@ -308,13 +313,14 @@ function ImportResultsStep({
               { key: "state", label: "State" },
               { key: "country", label: "Country" },
               { key: "lead_owner", label: "Lead Owner" },
-              { key: "crm_status", label: "Status" },
+              { key: "crm_status", label: "Status", render: (row: TargetLead): React.ReactNode => <StatusBadge status={row.crm_status} /> },
               { key: "crm_note", label: "Notes/Remarks" },
               { key: "data_source", label: "Source" },
               { key: "possession_time", label: "Possession Time" },
               { key: "description", label: "Description" },
             ]}
             maxHeight={300}
+            onRowClick={onRowClick}
           />
         ) : (
           <p className="text-center text-sm text-muted-foreground py-8">No skipped leads.</p>
@@ -336,13 +342,14 @@ function ImportResultsStep({
               { key: "state", label: "State" },
               { key: "country", label: "Country" },
               { key: "lead_owner", label: "Lead Owner" },
-              { key: "crm_status", label: "Status" },
+              { key: "crm_status", label: "Status", render: (row: TargetLead): React.ReactNode => <StatusBadge status={row.crm_status} /> },
               { key: "crm_note", label: "Reason/Error" },
               { key: "data_source", label: "Source" },
               { key: "possession_time", label: "Possession Time" },
               { key: "description", label: "Description" },
             ]}
             maxHeight={300}
+            onRowClick={onRowClick}
           />
         ) : (
           <p className="text-center text-sm text-muted-foreground py-8">No failed leads.</p>
@@ -380,15 +387,19 @@ export function ImportModal({
   // Active tab for results filtering: "imported" | "skipped" | "failed"
   const [activeTab, setActiveTab] = useState<"imported" | "skipped" | "failed">("imported");
 
+  const [selectedLead, setSelectedLead] = useState<TargetLead | null>(null);
+
   // Keep references to latest values to avoid re-subscribing in useEffect
   const onCloseRef = useRef(onClose);
   const handleResetRef = useRef(handleReset);
   const stepRef = useRef(step);
+  const selectedLeadRef = useRef<TargetLead | null>(null);
 
   useEffect(() => {
     onCloseRef.current = onClose;
     handleResetRef.current = handleReset;
     stepRef.current = step;
+    selectedLeadRef.current = selectedLead;
   });
 
   // Close on Escape key
@@ -396,7 +407,7 @@ export function ImportModal({
     if (!isOpen) return;
 
     const handleKeyDown = (e: KeyboardEvent): void => {
-      if (e.key === "Escape" && stepRef.current !== "importing") {
+      if (e.key === "Escape" && stepRef.current !== "importing" && !selectedLeadRef.current) {
         onCloseRef.current();
         handleResetRef.current();
       }
@@ -440,12 +451,13 @@ export function ImportModal({
   }));
 
   return (
-    <div
-      ref={backdropRef}
-      role="presentation"
-      onClick={handleBackdropClick}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-fade-in"
-    >
+    <>
+      <div
+        ref={backdropRef}
+        role="presentation"
+        onClick={handleBackdropClick}
+        className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-fade-in"
+      >
       <div
         className={cn(
           "relative flex flex-col bg-card rounded-2xl shadow-2xl border border-border",
@@ -519,6 +531,7 @@ export function ImportModal({
               fileName={fileName}
               activeTab={activeTab}
               setActiveTab={setActiveTab}
+              onRowClick={setSelectedLead}
             />
           )}
         </div>
@@ -581,6 +594,9 @@ export function ImportModal({
           )}
         </div>
       </div>
-    </div>
+      </div>
+      <LeadDetailsDrawer lead={selectedLead} onClose={() => setSelectedLead(null)} />
+    </>
   );
 }
+
