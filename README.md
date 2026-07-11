@@ -9,25 +9,36 @@ GrowEasy CRM AI Lead Importer is a robust full-stack web application designed to
 
 ## 🌟 Key Features
 
-### 1. Required Features (Fully Implemented)
-*   **Intelligent AI Mapping & Extraction:** Calls Groq API in batches of 10-20 leads to resolve headers, extract phone country codes, and map fields correctly into the target GrowEasy CRM format.
-*   **Dual-Stage Import Flow:**
-    1.  **Step 1:** Upload file & preview raw contents locally in a responsive, virtualized scroll table.
-    2.  **Step 2:** Confirm import to trigger the backend AI mapping service, preventing premature API expenses.
-*   **Data Validation & Skipping Logic:** Automatically skips records missing both email and mobile numbers.
-*   **SQLite Lead Persistence:** Stores imported leads in a localized SQLite database.
-*   **Dashboard Analytics:** Shows import metrics (Total Imported, Total Skipped) along with an interactive, searchable datatable of all imported leads.
+### 1. Functional Requirements (Fully Implemented)
 
-### 2. Bonus Features (Fully Implemented)
-*   **Dynamic Multi-Environment Setup (Docker & Local):** Full separation of Development and Production environment variables (`.env.development` & `.env.production`) for maximum flexibility.
-*   **Drag & Drop Upload:** Drop area with modern CSS transitions.
-*   **Real-time Batch Progress Indicators:** Shows progress (e.g., "Processing batch 2 of 5...") to provide an interactive user experience.
-*   **Streaming & Incremental Parsing (SSE):** Streams processed batches from the server to the client in real-time as they complete using Server-Sent Events (SSE), ensuring instant feedback and progress updates.
-*   **Intelligent AI Retry Mechanism:** Resilient mapping logic that handles rate-limiting (429) or transient errors (5xx) from the Groq API by parsing `Retry-After` headers and retrying up to 3 times with exponential backoff.
-*   **Virtualized Datatable:** Employs efficient rendering to support thousands of preview rows without lagging the UI.
-*   **Persistent Theme Manager:** Support for beautiful persistent Light and Dark modes.
-*   **Download Option:** Easily export the final mapped, AI-extracted leads back as a clean, standardized CSV.
-*   **Containerized Orchestration (Docker Compose):** Optimized, secure, multi-stage Docker build pipeline for instant local deployment.
+#### 💻 Frontend (Next.js)
+*   **Step 1 — Upload CSV:** Supports both traditional file picking and drag-and-drop uploads.
+*   **Step 2 — Pre-AI Preview Table:** Renders the uploaded CSV raw contents in a beautiful, responsive table featuring sticky headers, horizontal scrolling, and vertical scrolling—without initiating premature AI API calls.
+*   **Step 3 — Confirm Import Step:** A prominent "Confirm Import" button ensures the backend AI mapping service is called only after the user's explicit confirmation.
+*   **Step 4 — Display Parsed Results:** Visualizes the final AI-extracted CRM records in a responsive table, displaying summary metrics (Total Imported, Total Skipped) and detailing skipped rows.
+
+#### ⚙️ Backend & AI Mapping Pipeline (Node.js + Express)
+*   **Arbitrary CSV Parsing:** Dynamically accepts and parses any valid CSV format (e.g., Facebook Lead Exports, Google Ads Exports, Real Estate CRM sheets, custom spreadsheets) without assuming fixed column headers.
+*   **Optimized Batch Processing:** Groups records into efficient batch sizes of 10 to 20 for concurrent AI mapping and database persistence.
+*   **Lead Rules & Validation Engine:**
+    *   **CRM Status Enforcing:** Restricts `crm_status` strictly to: `GOOD_LEAD_FOLLOW_UP`, `DID_NOT_CONNECT`, `BAD_LEAD`, or `SALE_DONE` (with a default fallback).
+    *   **Data Source Enforcing:** Restricts `data_source` strictly to: `leads_on_demand`, `meridian_tower`, `eden_park`, `varah_swamy`, `sarjapur_plots`, or blank.
+    *   **Date Format Normalization:** Cleans `created_at` into ISO strings or date formats fully parsable by JavaScript's `new Date()`.
+    *   **Fields Split & Overflow (CRM Notes):** Places primary email/phone in target fields, and automatically moves extra emails/phones or overflow data to `crm_note`.
+    *   **Skip Logic:** Automatically filters out and skips records missing *both* an email and a mobile number.
+    *   **CSV Compatibility:** Escapes line breaks inside CRM strings to prevent unescaped breaks from corrupting CSV structures.
+*   **SQLite Lead Persistence:** Stores successfully imported leads in a localized SQLite database.
+
+### 2. Bonus Features
+*   **Drag & Drop Upload Zone:** Interactive file dropping area with clean modern CSS animations.
+*   **Real-time Batch Progress Indicators:** Displays progress bars and live batch processing counters (e.g., "Processing batch 2 of 5...") in the UI.
+*   **Streaming & Incremental Parsing:** Utilizes Server-Sent Events (SSE) to stream processed batches from server to client as they complete, offering instant visual updates.
+*   **Intelligent AI Retry Mechanism:** Resilient backend featuring up to 3 automated retries with exponential backoff and smart parsing of the API's `Retry-After` rate-limit (429) and server (5xx) headers.
+*   **Virtualized Datatable:** Smoothly renders thousands of raw CSV rows without browser lag by employing list virtualization.
+*   **Persistent Theme Manager:** Beautiful system-aware dark and light modes with persistent user selection.
+*   **Download Option:** Standardized export of AI-extracted leads back to a clean CSV.
+*   **Containerized Orchestration (Docker Setup):** Multi-stage production Docker build pipeline, dropping root privileges to run as a restricted system user for production-grade security.
+*   **Cloud Deployment:** Fully hosted and running in the cloud.
 
 ---
 
@@ -41,12 +52,72 @@ GrowEasy CRM AI Lead Importer is a robust full-stack web application designed to
 
 ---
 
+## 🔄 Architecture & Data Flow
+
+### 1. High-Level System Architecture
+The application is structured into three primary layers: the Next.js Frontend Client, the Node.js/Express Backend Server (with SQLite database), and the External Groq Cloud LLM:
+
+```mermaid
+graph LR
+    subgraph Client ["Client-Side (Next.js)"]
+        UI["Interactive UI & Dashboard"] <--> |"SSE Progress Updates"| API["API Requests"]
+        UI --> |"Display Table"| Table["Virtualized DataTable Preview"]
+    end
+    
+    subgraph Server ["Backend Server (Node.js/Express)"]
+        API <--> CTRL["Lead Controller"]
+        CTRL <--> |"Process Batches"| AIS["AI Service (Groq SDK)"]
+        CTRL --> |"Lead Persistence"| DB[("SQLite Database")]
+    end
+    
+    subgraph External ["AI Infrastructure"]
+        AIS <--> |"Resilient Retries"| Groq(("Groq Cloud LLM"))
+    end
+```
+
+### 2. End-to-End Processing Flow
+Below is the detailed step-by-step processing lifecycle of an uploaded CSV file:
+
+```mermaid
+graph TD
+    A["User Uploads CSV"] --> B["POST /api/upload (Backend Parser)"]
+    B --> C["Render Virtualized Table Preview"]
+    C --> D{"User clicks Confirm Import?"}
+    D -->|No| C
+    D -->|Yes| E["POST /api/import-confirm"]
+    E --> F["Split Records into Batches of 15"]
+    F --> G["AI Service: Call Groq API"]
+    G --> H{"API Request Success?"}
+    H -->|"No (429/5xx)"| I["AI Retry Mechanism: Exponential Backoff"]
+    I --> G
+    H -->|"No (Retries Exhausted)"| J["Graceful Failure Fallback Stub"]
+    H -->|Yes| K["AI Schema Mapping & Extraction"]
+    J --> L["Lead Rules & Skipping Logic"]
+    K --> L
+    L --> M{"Skip Row? (Missing Email & Phone)"}
+    M -->|Yes| N["Mark as Skipped"]
+    M -->|No| O["Save to SQLite DB"]
+    N --> P["Stream Progress Update via SSE"]
+    O --> P
+    P --> Q["Frontend: Real-time Progress Bar & Table Update"]
+    Q --> R["Download Extracted CSV / View Dashboard"]
+```
+
+---
+
 ## 🚀 Quick Start 
 
 The easiest and recommended way for a reviewer to run the application is using **Docker**, as it automatically compiles all native dependencies (including SQLite) and manages the service networking.
 
-### Step 1: Copy Environment Templates
-From the project root folder (`d:\GrowEasy`), run the following commands in your terminal to initialize the environment files:
+### Step 1: Clone the Repository
+Clone the repository to your local machine and navigate to the project directory:
+```bash
+git clone https://github.com/CodeAritra/GrowEasy-Assignment.git
+cd GrowEasy-Assignment
+```
+
+### Step 2: Copy Environment Templates
+Run the following commands in your terminal to initialize the environment files:
 
 *   **Linux / macOS / Git Bash:**
     ```bash
@@ -59,20 +130,20 @@ From the project root folder (`d:\GrowEasy`), run the following commands in your
     Copy-Item backend/.env.example backend/.env.development
     ```
 
-### Step 2: Add your Groq API Key
-Open the newly created [backend/.env.development](file:///d:/GrowEasy/backend/.env.development) file and insert your API key:
+### Step 3: Add your Groq API Key
+Open the newly created `backend/.env.development` file and insert your API key:
 ```env
 GROQ_API_KEY=gsk_your_groq_api_key_here
 ```
 
-### Step 3: Run the Application
+### Step 4: Run the Application
 Start the containerized stack in the background:
 ```bash
 docker compose up -d --build
 ```
 *(No environment warnings will be shown as the stack dynamically resolves environment configurations).*
 
-### Step 4: Verify Setup
+### Step 5: Verify Setup
 *   **Frontend UI:** Open [http://localhost:3000](http://localhost:3000) 
 *   **Backend Server:** Open [http://localhost:4000/api/health](http://localhost:4000/api/health) (Should return `{ "status": "ok" }`).
 
